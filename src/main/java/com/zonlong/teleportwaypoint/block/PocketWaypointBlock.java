@@ -43,6 +43,11 @@ public class PocketWaypointBlock extends BaseEntityBlock {
         if (!(level.getBlockEntity(pos) instanceof WaypointBlockEntity waypointEntity)) {
             return InteractionResult.FAIL;
         }
+        if (!level.isClientSide() && player.isShiftKeyDown() && player instanceof ServerPlayer serverPlayer
+                && WaypointManager.canRename(serverPlayer, waypointEntity)) {
+            waypointEntity.openRenameScreen(serverPlayer);
+            return InteractionResult.SUCCESS;
+        }
         return WaypointManager.onUse(level, pos, player, waypointEntity);
     }
 
@@ -58,7 +63,7 @@ public class PocketWaypointBlock extends BaseEntityBlock {
         WaypointManager.register(waypointEntity);
         if (placer instanceof ServerPlayer serverPlayer) {
             WaypointManager.activate(serverPlayer, waypointEntity);
-            waypointEntity.openInitialScreen(serverPlayer);
+            waypointEntity.openRenameScreen(serverPlayer);
         }
     }
 

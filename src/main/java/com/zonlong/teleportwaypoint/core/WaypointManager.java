@@ -85,6 +85,13 @@ public class WaypointManager {
         PacketDistributor.sendToPlayer(player, new SyncActivatedWaypointsPayload(infos));
     }
 
+    public static boolean canRename(Player player, WaypointBlockEntity be) {
+        if (player.isCreative()) {
+            return true;
+        }
+        return be.isPocketWaypoint() && be.getOwner() != null && be.getOwner().equals(player.getUUID());
+    }
+
     public static InteractionResult onUse(Level level, BlockPos pos, Player player, WaypointBlockEntity be) {
         if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
@@ -98,9 +105,8 @@ public class WaypointManager {
         }
         if (!isActivated(serverPlayer, uid)) {
             activate(serverPlayer, be);
-        } else {
-            be.openInitialScreen(serverPlayer);
         }
+        be.openListScreen(serverPlayer);
         return InteractionResult.SUCCESS;
     }
 }

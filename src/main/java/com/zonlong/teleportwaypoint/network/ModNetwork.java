@@ -2,6 +2,7 @@ package com.zonlong.teleportwaypoint.network;
 
 import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 import com.zonlong.teleportwaypoint.client.ClientWaypointState;
+import com.zonlong.teleportwaypoint.core.WaypointManager;
 import com.zonlong.teleportwaypoint.core.WaypointTeleporter;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -57,18 +58,13 @@ public class ModNetwork {
             if (!(blockEntity instanceof WaypointBlockEntity waypointEntity)) {
                 return;
             }
+            if (!WaypointManager.canRename(serverPlayer, waypointEntity)) {
+                return;
+            }
             String text = payload.text();
             if (waypointEntity.isPocketWaypoint()) {
-                // Only the owner may rename a pocket waypoint.
-                if (waypointEntity.getOwner() != null && !waypointEntity.getOwner().equals(serverPlayer.getUUID())) {
-                    return;
-                }
                 waypointEntity.setName(text);
             } else {
-                // Structure waypoints: id only editable in creative mode and must match [a-z0-9]+.
-                if (!serverPlayer.isCreative()) {
-                    return;
-                }
                 String newId = text.isEmpty() ? "empty" : text;
                 if (!WaypointBlockEntity.isValidId(newId)) {
                     return;
@@ -90,12 +86,7 @@ public class ModNetwork {
             if (!(blockEntity instanceof WaypointBlockEntity waypointEntity)) {
                 return;
             }
-            // Permission check: pocket waypoint -> owner only; structure waypoint -> creative only.
-            if (waypointEntity.isPocketWaypoint()) {
-                if (waypointEntity.getOwner() == null || !waypointEntity.getOwner().equals(serverPlayer.getUUID())) {
-                    return;
-                }
-            } else if (!serverPlayer.isCreative()) {
+            if (!WaypointManager.canRename(serverPlayer, waypointEntity)) {
                 return;
             }
             waypointEntity.openRenameScreen(serverPlayer);

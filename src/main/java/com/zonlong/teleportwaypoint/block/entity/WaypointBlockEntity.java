@@ -102,21 +102,6 @@ public class WaypointBlockEntity extends BlockEntity {
         return id != null && id.matches(ID_PATTERN);
     }
 
-    public boolean needsNaming() {
-        if (isPocketWaypoint()) {
-            return name.isEmpty();
-        }
-        return id.isEmpty() || id.equals("empty");
-    }
-
-    public void openInitialScreen(net.minecraft.server.level.ServerPlayer player) {
-        if (needsNaming()) {
-            openRenameScreen(player);
-        } else {
-            openListScreen(player);
-        }
-    }
-
     public void openRenameScreen(net.minecraft.server.level.ServerPlayer player) {
         player.openMenu(new MenuProvider() {
             @Override

@@ -48,7 +48,7 @@ public class WaypointBlock extends BaseEntityBlock {
         WaypointManager.register(waypointEntity);
         if (placer instanceof ServerPlayer serverPlayer) {
             WaypointManager.activate(serverPlayer, waypointEntity);
-            waypointEntity.openInitialScreen(serverPlayer);
+            waypointEntity.openRenameScreen(serverPlayer);
         }
     }
 
@@ -56,6 +56,11 @@ public class WaypointBlock extends BaseEntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
         if (!(level.getBlockEntity(pos) instanceof WaypointBlockEntity waypointEntity)) {
             return InteractionResult.FAIL;
+        }
+        if (!level.isClientSide() && player.isShiftKeyDown() && player instanceof ServerPlayer serverPlayer
+                && WaypointManager.canRename(serverPlayer, waypointEntity)) {
+            waypointEntity.openRenameScreen(serverPlayer);
+            return InteractionResult.SUCCESS;
         }
         return WaypointManager.onUse(level, pos, player, waypointEntity);
     }
