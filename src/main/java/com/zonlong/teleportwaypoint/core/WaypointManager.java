@@ -67,7 +67,7 @@ public class WaypointManager {
         return PlayerWaypointData.get(player.getServer()).getActivated(player.getUUID());
     }
 
-    public static void activate(ServerPlayer player, WaypointBlockEntity be) {
+    public static void activate(ServerPlayer player, WaypointBlockEntity be, boolean showMessage) {
         UUID uid = be.getUid();
         if (uid == null) {
             return;
@@ -77,7 +77,10 @@ public class WaypointManager {
 
         syncTo(player);
 
-        player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.activated", be.getDisplayName()));
+        if (showMessage) {
+            String key = be.isPocketWaypoint() ? "chat.teleportwaypoint.pocket_waypoint_activated" : "chat.teleportwaypoint.waypoint_activated";
+            player.sendSystemMessage(Component.translatable(key, be.getDisplayName()));
+        }
     }
 
     public static void deactivate(ServerPlayer player, UUID uid) {
@@ -152,7 +155,7 @@ public class WaypointManager {
             return InteractionResult.FAIL;
         }
         if (!isActivated(serverPlayer, uid)) {
-            activate(serverPlayer, be);
+            activate(serverPlayer, be, true);
         }
         be.openListScreen(serverPlayer);
         return InteractionResult.SUCCESS;

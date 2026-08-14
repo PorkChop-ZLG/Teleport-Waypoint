@@ -13,13 +13,13 @@
   "gui.teleportwaypoint.close": "关闭",
   "gui.teleportwaypoint.search": "搜索...",
 
-  "chat.teleportwaypoint.activated": "已激活传送锚点：%s",
+  "chat.teleportwaypoint.waypoint_activated": "已激活传送锚点：%s",
+  "chat.teleportwaypoint.pocket_waypoint_activated": "已激活口袋锚点：%s",
   "chat.teleportwaypoint.target_missing": "目标传送锚点已不存在。",
   "chat.teleportwaypoint.invalid_dimension": "目标维度无效。",
   "chat.teleportwaypoint.teleport_denied": "传送请求无效。",
 
   "teleportwaypoint.waypoint.empty": "未命名传送锚点",
-  "teleportwaypoint.pocket_waypoint.empty": "未命名口袋锚点",
   "teleportwaypoint.waypoint.village": "村庄",
   "teleportwaypoint.waypoint.trial_chambers": "试炼密室",
 

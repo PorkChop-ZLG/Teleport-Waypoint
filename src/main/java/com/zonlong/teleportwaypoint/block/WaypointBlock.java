@@ -54,7 +54,7 @@ public class WaypointBlock extends BaseEntityBlock {
         }
         WaypointManager.register(waypointEntity);
         if (placer instanceof ServerPlayer serverPlayer) {
-            WaypointManager.activate(serverPlayer, waypointEntity);
+            WaypointManager.activate(serverPlayer, waypointEntity, false);
             // Sync block entity data before opening the GUI so the client sees the correct owner/id.
             if (level instanceof ServerLevel serverLevel) {
                 serverLevel.getChunkSource().blockChanged(pos);

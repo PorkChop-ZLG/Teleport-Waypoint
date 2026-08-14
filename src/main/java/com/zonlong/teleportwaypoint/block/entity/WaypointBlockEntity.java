@@ -109,7 +109,7 @@ public class WaypointBlockEntity extends BlockEntity {
 
     public Component getDisplayName() {
         if (isPocketWaypoint()) {
-            return name.isEmpty() ? Component.translatable("teleportwaypoint.pocket_waypoint.empty") : Component.literal(name);
+            return Component.literal(name);
         }
         return (id.isEmpty() || !isValidId(id)) ? Component.translatable("teleportwaypoint.waypoint.empty") : Component.translatable("teleportwaypoint.waypoint." + id);
     }

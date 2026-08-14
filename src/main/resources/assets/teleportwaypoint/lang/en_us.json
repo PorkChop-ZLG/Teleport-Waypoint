@@ -13,13 +13,13 @@
   "gui.teleportwaypoint.close": "Close",
   "gui.teleportwaypoint.search": "Search...",
 
-  "chat.teleportwaypoint.activated": "Waypoint activated: %s",
+  "chat.teleportwaypoint.waypoint_activated": "Waypoint activated: %s",
+  "chat.teleportwaypoint.pocket_waypoint_activated": "Pocket Waypoint activated: %s",
   "chat.teleportwaypoint.target_missing": "Target waypoint no longer exists.",
   "chat.teleportwaypoint.invalid_dimension": "Target dimension is invalid.",
   "chat.teleportwaypoint.teleport_denied": "Teleport request is invalid.",
 
   "teleportwaypoint.waypoint.empty": "Unnamed Waypoint",
-  "teleportwaypoint.pocket_waypoint.empty": "Unnamed Pocket Waypoint",
   "teleportwaypoint.waypoint.village": "Village",
   "teleportwaypoint.waypoint.trial_chambers": "Trial Chambers",
 
