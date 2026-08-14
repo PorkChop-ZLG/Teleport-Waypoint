@@ -28,6 +28,7 @@ public class TeleportWaypoint {
         ModBlocks.BLOCKS.register(modEventBus);
         ModBlockEntities.BLOCK_ENTITIES.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
+        ModItems.CREATIVE_MODE_TABS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
         modEventBus.addListener(ModNetwork::register);
 

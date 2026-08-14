@@ -1,7 +1,8 @@
 package com.zonlong.teleportwaypoint;
 
-import com.zonlong.teleportwaypoint.client.gui.PocketWaypointScreen;
-import com.zonlong.teleportwaypoint.client.gui.WaypointScreen;
+import com.zonlong.teleportwaypoint.client.gui.RenamePocketWaypointScreen;
+import com.zonlong.teleportwaypoint.client.gui.RenameWaypointScreen;
+import com.zonlong.teleportwaypoint.client.gui.WaypointListScreen;
 import com.zonlong.teleportwaypoint.menu.ModMenus;
 
 import net.neoforged.api.distmarker.Dist;
@@ -23,7 +24,8 @@ public class TeleportWaypointClient {
     }
 
     static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenus.WAYPOINT.get(), WaypointScreen::new);
-        event.register(ModMenus.POCKET_WAYPOINT.get(), PocketWaypointScreen::new);
+        event.register(ModMenus.RENAME_WAYPOINT.get(), RenameWaypointScreen::new);
+        event.register(ModMenus.RENAME_POCKET_WAYPOINT.get(), RenamePocketWaypointScreen::new);
+        event.register(ModMenus.WAYPOINT_LIST.get(), WaypointListScreen::new);
     }
 }

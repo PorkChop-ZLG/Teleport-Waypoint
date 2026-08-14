@@ -21,8 +21,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 import com.zonlong.teleportwaypoint.menu.ModMenus;
-import com.zonlong.teleportwaypoint.menu.PocketWaypointMenu;
-import com.zonlong.teleportwaypoint.menu.WaypointMenu;
+import com.zonlong.teleportwaypoint.menu.RenamePocketWaypointMenu;
+import com.zonlong.teleportwaypoint.menu.RenameWaypointMenu;
+import com.zonlong.teleportwaypoint.menu.WaypointListMenu;
 
 public class WaypointBlockEntity extends BlockEntity {
     private static final String TAG_UID = "uid";
@@ -33,7 +34,7 @@ public class WaypointBlockEntity extends BlockEntity {
     private static final String ID_PATTERN = "[a-z0-9]+";
 
     private UUID uid;
-    private String id = "";
+    private String id = "empty";
     private String name = "";
     private UUID owner;
 
@@ -68,7 +69,7 @@ public class WaypointBlockEntity extends BlockEntity {
     }
 
     public void setId(String id) {
-        this.id = id;
+        this.id = (id == null || id.isEmpty()) ? "empty" : id;
         setChanged();
     }
 
@@ -92,28 +93,59 @@ public class WaypointBlockEntity extends BlockEntity {
 
     public Component getDisplayName() {
         if (isPocketWaypoint()) {
-            return name.isEmpty() ? Component.translatable("block.teleportwaypoint.pocket_waypoint") : Component.literal(name);
+            return name.isEmpty() ? Component.translatable("teleportwaypoint.pocket_waypoint.empty") : Component.literal(name);
         }
-        return id.isEmpty() ? Component.translatable("block.teleportwaypoint.waypoint") : Component.translatable("teleportwaypoint.waypoint." + id);
+        return id.isEmpty() ? Component.translatable("teleportwaypoint.waypoint.empty") : Component.translatable("teleportwaypoint.waypoint." + id);
     }
 
     public static boolean isValidId(String id) {
         return id != null && id.matches(ID_PATTERN);
     }
 
-    public void openMenu(net.minecraft.server.level.ServerPlayer player) {
+    public boolean needsNaming() {
+        if (isPocketWaypoint()) {
+            return name.isEmpty();
+        }
+        return id.isEmpty() || id.equals("empty");
+    }
+
+    public void openInitialScreen(net.minecraft.server.level.ServerPlayer player) {
+        if (needsNaming()) {
+            openRenameScreen(player);
+        } else {
+            openListScreen(player);
+        }
+    }
+
+    public void openRenameScreen(net.minecraft.server.level.ServerPlayer player) {
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
-                return WaypointBlockEntity.this.getDisplayName();
+                return isPocketWaypoint()
+                        ? Component.translatable("gui.teleportwaypoint.rename_pocket_waypoint")
+                        : Component.translatable("gui.teleportwaypoint.rename_waypoint");
             }
 
             @Override
             public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
                 if (isPocketWaypoint()) {
-                    return new PocketWaypointMenu(ModMenus.POCKET_WAYPOINT.get(), containerId, getBlockPos());
+                    return new RenamePocketWaypointMenu(ModMenus.RENAME_POCKET_WAYPOINT.get(), containerId, getBlockPos());
                 }
-                return new WaypointMenu(ModMenus.WAYPOINT.get(), containerId, getBlockPos());
+                return new RenameWaypointMenu(ModMenus.RENAME_WAYPOINT.get(), containerId, getBlockPos());
+            }
+        }, buf -> buf.writeBlockPos(getBlockPos()));
+    }
+
+    public void openListScreen(net.minecraft.server.level.ServerPlayer player) {
+        player.openMenu(new MenuProvider() {
+            @Override
+            public Component getDisplayName() {
+                return Component.translatable("gui.teleportwaypoint.waypoint_list");
+            }
+
+            @Override
+            public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
+                return new WaypointListMenu(ModMenus.WAYPOINT_LIST.get(), containerId, getBlockPos());
             }
         }, buf -> buf.writeBlockPos(getBlockPos()));
     }
@@ -141,7 +173,12 @@ public class WaypointBlockEntity extends BlockEntity {
         if (tag.contains(TAG_UID, Tag.TAG_INT_ARRAY)) {
             uid = NbtUtils.loadUUID(tag.get(TAG_UID));
         }
-        id = tag.getString(TAG_ID);
+        if (tag.contains(TAG_ID)) {
+            id = tag.getString(TAG_ID);
+            if (id.isEmpty()) {
+                id = "empty";
+            }
+        }
         name = tag.getString(TAG_NAME);
         if (tag.contains(TAG_OWNER, Tag.TAG_INT_ARRAY)) {
             owner = NbtUtils.loadUUID(tag.get(TAG_OWNER));

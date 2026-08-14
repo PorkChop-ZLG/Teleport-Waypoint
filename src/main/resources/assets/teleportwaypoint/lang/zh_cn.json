@@ -1,14 +1,24 @@
 {
+  "itemGroup.teleportwaypoint": "传送锚点",
+
   "block.teleportwaypoint.waypoint": "传送锚点",
   "block.teleportwaypoint.pocket_waypoint": "口袋锚点",
+  "item.teleportwaypoint.waypoint": "传送锚点",
   "item.teleportwaypoint.pocket_waypoint": "口袋锚点",
 
+  "gui.teleportwaypoint.rename_waypoint": "命名传送锚点",
+  "gui.teleportwaypoint.rename_pocket_waypoint": "命名口袋锚点",
+  "gui.teleportwaypoint.waypoint_list": "传送列表",
   "gui.teleportwaypoint.save": "保存",
+  "gui.teleportwaypoint.close": "关闭",
+  "gui.teleportwaypoint.search": "搜索...",
 
   "chat.teleportwaypoint.activated": "已激活传送锚点：%s",
   "chat.teleportwaypoint.target_missing": "目标传送锚点已不存在。",
   "chat.teleportwaypoint.invalid_dimension": "目标维度无效。",
 
+  "teleportwaypoint.waypoint.empty": "未命名传送锚点",
+  "teleportwaypoint.pocket_waypoint.empty": "未命名口袋锚点",
   "teleportwaypoint.waypoint.village": "村庄传送锚点",
 
   "teleportwaypoint.configuration.title": "传送锚点配置",

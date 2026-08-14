@@ -8,10 +8,10 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
 
-public class PocketWaypointMenu extends AbstractContainerMenu {
+public abstract class AbstractWaypointMenu extends AbstractContainerMenu {
     private final BlockPos pos;
 
-    public PocketWaypointMenu(MenuType<?> type, int containerId, BlockPos pos) {
+    protected AbstractWaypointMenu(MenuType<?> type, int containerId, BlockPos pos) {
         super(type, containerId);
         this.pos = pos;
     }

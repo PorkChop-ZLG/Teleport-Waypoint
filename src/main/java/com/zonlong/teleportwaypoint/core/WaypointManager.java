@@ -99,7 +99,7 @@ public class WaypointManager {
         if (!isActivated(serverPlayer, uid)) {
             activate(serverPlayer, be);
         } else {
-            be.openMenu(serverPlayer);
+            be.openInitialScreen(serverPlayer);
         }
         return InteractionResult.SUCCESS;
     }

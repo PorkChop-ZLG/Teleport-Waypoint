@@ -1,14 +1,24 @@
 {
+  "itemGroup.teleportwaypoint": "Teleport Waypoint",
+
   "block.teleportwaypoint.waypoint": "Teleport Waypoint",
   "block.teleportwaypoint.pocket_waypoint": "Pocket Waypoint",
+  "item.teleportwaypoint.waypoint": "Teleport Waypoint",
   "item.teleportwaypoint.pocket_waypoint": "Pocket Waypoint",
 
+  "gui.teleportwaypoint.rename_waypoint": "Name Waypoint",
+  "gui.teleportwaypoint.rename_pocket_waypoint": "Name Pocket Waypoint",
+  "gui.teleportwaypoint.waypoint_list": "Waypoint List",
   "gui.teleportwaypoint.save": "Save",
+  "gui.teleportwaypoint.close": "Close",
+  "gui.teleportwaypoint.search": "Search...",
 
   "chat.teleportwaypoint.activated": "Waypoint activated: %s",
   "chat.teleportwaypoint.target_missing": "Target waypoint no longer exists.",
   "chat.teleportwaypoint.invalid_dimension": "Target dimension is invalid.",
 
+  "teleportwaypoint.waypoint.empty": "Unnamed Waypoint",
+  "teleportwaypoint.pocket_waypoint.empty": "Unnamed Pocket Waypoint",
   "teleportwaypoint.waypoint.village": "Village Waypoint",
 
   "teleportwaypoint.configuration.title": "Teleport Waypoint Configs",

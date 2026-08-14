@@ -4,6 +4,7 @@ import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 import com.zonlong.teleportwaypoint.core.WaypointManager;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -48,11 +49,16 @@ public class PocketWaypointBlock extends BaseEntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (!level.isClientSide() && level.getBlockEntity(pos) instanceof WaypointBlockEntity waypointEntity) {
-            if (placer instanceof Player player) {
-                waypointEntity.setOwner(player.getUUID());
-            }
-            WaypointManager.register(waypointEntity);
+        if (level.isClientSide() || !(level.getBlockEntity(pos) instanceof WaypointBlockEntity waypointEntity)) {
+            return;
+        }
+        if (placer instanceof Player player) {
+            waypointEntity.setOwner(player.getUUID());
+        }
+        WaypointManager.register(waypointEntity);
+        if (placer instanceof ServerPlayer serverPlayer) {
+            WaypointManager.activate(serverPlayer, waypointEntity);
+            waypointEntity.openInitialScreen(serverPlayer);
         }
     }
 
