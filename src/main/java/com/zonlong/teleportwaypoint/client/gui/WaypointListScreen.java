@@ -5,19 +5,16 @@ import java.util.UUID;
 import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 import com.zonlong.teleportwaypoint.client.ClientWaypointState;
 import com.zonlong.teleportwaypoint.menu.WaypointListMenu;
-import com.zonlong.teleportwaypoint.network.ActivatedWaypointInfo;
 import com.zonlong.teleportwaypoint.network.OpenRenameScreenPayload;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.lwjgl.glfw.GLFW;
 
-public class WaypointListScreen extends AbstractContainerScreen<WaypointListMenu> {
-    private final BlockPos pos;
+public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu> {
     private UUID selfUid;
     private WaypointBlockEntity selfEntity;
     private boolean canEditName;
@@ -25,19 +22,15 @@ public class WaypointListScreen extends AbstractContainerScreen<WaypointListMenu
     private WaypointList waypointList;
     private String searchText = "";
 
-    private static final int NAME_HEADER_Y = 18;
+    private static final int NAME_HEADER_Y = 32;
+    private static final int LIST_WIDTH = 200;
 
     public WaypointListScreen(WaypointListMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        this.pos = menu.getPos();
+        super(menu, title);
     }
 
     @Override
     protected void init() {
-        this.imageWidth = 220;
-        this.imageHeight = 210;
-        super.init();
-
         selfUid = null;
         selfEntity = null;
         canEditName = false;
@@ -47,7 +40,9 @@ public class WaypointListScreen extends AbstractContainerScreen<WaypointListMenu
             canEditName = canEdit(wbe);
         }
 
-        searchBox = new EditBox(font, leftPos + 10, topPos + 44, imageWidth - 20, 20, Component.translatable("gui.teleportwaypoint.search"));
+        int listX = width / 2 - LIST_WIDTH / 2;
+
+        searchBox = new EditBox(font, listX, height / 2 - 60, LIST_WIDTH, 20, Component.translatable("gui.teleportwaypoint.search"));
         searchBox.setMaxLength(64);
         searchBox.setResponder(text -> {
             searchText = text;
@@ -55,7 +50,7 @@ public class WaypointListScreen extends AbstractContainerScreen<WaypointListMenu
         });
         addRenderableWidget(searchBox);
 
-        waypointList = new WaypointList(leftPos + 10, topPos + 70, imageWidth - 20, imageHeight - 80, selfUid);
+        waypointList = new WaypointList(listX, height / 2 - 35, LIST_WIDTH, 130, selfUid);
         addRenderableWidget(waypointList);
         updateList();
     }
@@ -85,10 +80,9 @@ public class WaypointListScreen extends AbstractContainerScreen<WaypointListMenu
         }
         Component name = selfEntity.getDisplayName();
         int halfWidth = font.width(name) / 2;
-        int centerX = leftPos + imageWidth / 2;
-        int y = topPos + NAME_HEADER_Y;
+        int centerX = width / 2;
         return mouseX >= centerX - halfWidth - 8 && mouseX < centerX + halfWidth + 8
-                && mouseY >= y && mouseY < y + font.lineHeight;
+                && mouseY >= NAME_HEADER_Y && mouseY < NAME_HEADER_Y + font.lineHeight;
     }
 
     private void openRename() {
@@ -105,25 +99,37 @@ public class WaypointListScreen extends AbstractContainerScreen<WaypointListMenu
     }
 
     @Override
-    protected void renderLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        guiGraphics.fill(0, 0, width, height, 0xC0101010);
+
         // Line 1: title
-        guiGraphics.drawCenteredString(font, title, imageWidth / 2, 6, 0xFFFFFFFF);
+        guiGraphics.drawCenteredString(font, title, width / 2, 15, 0xFFFFFFFF);
 
         // Line 2: current waypoint name (clickable when the player may rename)
         if (selfEntity != null) {
             Component name = selfEntity.getDisplayName();
             boolean hovered = isNameHeaderHovered(mouseX, mouseY);
             int color = hovered ? 0xFFFFFF55 : 0xFFFFFFFF;
-            guiGraphics.drawCenteredString(font, name, imageWidth / 2, NAME_HEADER_Y, color);
+            guiGraphics.drawCenteredString(font, name, width / 2, NAME_HEADER_Y, color);
             if (hovered) {
                 int halfWidth = font.width(name) / 2;
-                guiGraphics.drawString(font, Component.literal("\u270E"), imageWidth / 2 + halfWidth + 4, NAME_HEADER_Y, 0xFFFFFFFF, false);
+                guiGraphics.drawString(font, Component.literal("\u270E"), width / 2 + halfWidth + 4, NAME_HEADER_Y, 0xFFFFFFFF, false);
             }
         }
+
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override
-    protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
-        guiGraphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xC0101010);
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (searchBox != null && searchBox.isFocused()) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                onClose();
+            } else {
+                searchBox.keyPressed(keyCode, scanCode, modifiers);
+            }
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 }

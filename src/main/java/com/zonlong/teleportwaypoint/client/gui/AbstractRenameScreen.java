@@ -7,24 +7,21 @@ import com.zonlong.teleportwaypoint.network.RenameWaypointPayload;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Base screen for the two rename GUIs (rename waypoint / rename pocket waypoint).
  */
-public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> extends AbstractContainerScreen<T> {
-    protected final BlockPos pos;
+public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> extends AbstractWaypointScreen<T> {
     private EditBox textEdit;
     private boolean canEdit;
 
     protected AbstractRenameScreen(T menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
-        this.pos = menu.getPos();
+        super(menu, title);
     }
 
     protected abstract boolean canEdit(WaypointBlockEntity blockEntity, Player player);
@@ -33,10 +30,6 @@ public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> exten
 
     @Override
     protected void init() {
-        this.imageWidth = 176;
-        this.imageHeight = 110;
-        super.init();
-
         canEdit = false;
         String current = "";
         if (minecraft != null && minecraft.level != null && minecraft.level.getBlockEntity(pos) instanceof WaypointBlockEntity wbe) {
@@ -44,7 +37,11 @@ public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> exten
             current = getCurrentText(wbe);
         }
 
-        textEdit = new EditBox(font, leftPos + 20, topPos + 36, imageWidth - 40, 20, Component.empty());
+        int boxWidth = 136;
+        int boxX = width / 2 - boxWidth / 2;
+        int boxY = height / 2 - 30;
+
+        textEdit = new EditBox(font, boxX, boxY, boxWidth, 20, Component.empty());
         textEdit.setMaxLength(64);
         textEdit.setValue(current);
         textEdit.setEditable(canEdit);
@@ -52,7 +49,7 @@ public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> exten
 
         addRenderableWidget(Button.builder(
                 Component.translatable(canEdit ? "gui.teleportwaypoint.save" : "gui.teleportwaypoint.close"),
-                btn -> onButton()).bounds(leftPos + (imageWidth - 50) / 2, topPos + 62, 50, 20).build());
+                btn -> onButton()).bounds(width / 2 - 25, height / 2, 50, 20).build());
 
         if (canEdit && current.isEmpty()) {
             setInitialFocus(textEdit);
@@ -69,7 +66,24 @@ public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> exten
     }
 
     @Override
-    protected void renderBg(GuiGraphics guiGraphics, float partialTick, int mouseX, int mouseY) {
-        guiGraphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0xC0101010);
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        guiGraphics.fill(0, 0, width, height, 0xC0101010);
+        guiGraphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFFFF);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (textEdit != null && textEdit.isFocused()) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                onClose();
+            } else if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
+                onButton();
+            } else {
+                textEdit.keyPressed(keyCode, scanCode, modifiers);
+            }
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 }
