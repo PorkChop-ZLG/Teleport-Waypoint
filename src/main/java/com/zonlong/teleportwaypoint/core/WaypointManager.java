@@ -69,6 +69,11 @@ public class WaypointManager {
         player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.activated", be.getDisplayName()));
     }
 
+    public static void deactivate(ServerPlayer player, UUID uid) {
+        PlayerWaypointData.get(player.getServer()).deactivate(player.getUUID(), uid);
+        syncTo(player);
+    }
+
     /**
      * Sends the player's current activated-waypoint list (with names) to the client.
      */

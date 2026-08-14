@@ -23,4 +23,8 @@ public class ClientWaypointState {
     public static void setActivated(List<ActivatedWaypointInfo> infos) {
         activated = List.copyOf(infos);
     }
+
+    public static void removeActivated(UUID uid) {
+        activated = activated.stream().filter(info -> !info.uid().equals(uid)).toList();
+    }
 }

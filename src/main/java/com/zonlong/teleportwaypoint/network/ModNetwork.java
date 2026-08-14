@@ -35,6 +35,11 @@ public class ModNetwork {
                 OpenRenameScreenPayload.TYPE,
                 OpenRenameScreenPayload.STREAM_CODEC,
                 ModNetwork::handleOpenRename);
+
+        registrar.playToServer(
+                DeleteWaypointPayload.TYPE,
+                DeleteWaypointPayload.STREAM_CODEC,
+                ModNetwork::handleDelete);
     }
 
     private static void handleSyncActivated(final SyncActivatedWaypointsPayload payload, final IPayloadContext context) {
@@ -72,6 +77,9 @@ public class ModNetwork {
                 waypointEntity.setId(newId);
             }
             serverPlayer.level().sendBlockUpdated(payload.pos(), waypointEntity.getBlockState(), waypointEntity.getBlockState(), 3);
+            // Update the global registry and the client list with the new name.
+            WaypointManager.register(waypointEntity);
+            WaypointManager.syncTo(serverPlayer);
             // After renaming, open the waypoint list.
             waypointEntity.openListScreen(serverPlayer);
         });
@@ -90,6 +98,14 @@ public class ModNetwork {
                 return;
             }
             waypointEntity.openRenameScreen(serverPlayer);
+        });
+    }
+
+    private static void handleDelete(final DeleteWaypointPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer serverPlayer) {
+                WaypointManager.deactivate(serverPlayer, payload.uid());
+            }
         });
     }
 }

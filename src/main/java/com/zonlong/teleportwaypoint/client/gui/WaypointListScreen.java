@@ -5,7 +5,9 @@ import java.util.UUID;
 import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 import com.zonlong.teleportwaypoint.client.ClientWaypointState;
 import com.zonlong.teleportwaypoint.menu.WaypointListMenu;
+import com.zonlong.teleportwaypoint.network.DeleteWaypointPayload;
 import com.zonlong.teleportwaypoint.network.OpenRenameScreenPayload;
+import com.zonlong.teleportwaypoint.network.TeleportRequestPayload;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
@@ -50,7 +52,18 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
         });
         addRenderableWidget(searchBox);
 
-        waypointList = new WaypointList(listX, height / 2 - 35, LIST_WIDTH, 130, selfUid);
+        waypointList = new WaypointList(listX, height / 2 - 35, LIST_WIDTH, 130,
+                target -> {
+                    if (selfUid != null) {
+                        PacketDistributor.sendToServer(new TeleportRequestPayload(selfUid, target));
+                    }
+                    onClose();
+                },
+                uid -> {
+                    PacketDistributor.sendToServer(new DeleteWaypointPayload(uid));
+                    ClientWaypointState.removeActivated(uid);
+                    updateList();
+                });
         addRenderableWidget(waypointList);
         updateList();
     }
@@ -100,7 +113,7 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        guiGraphics.fill(0, 0, width, height, 0xC0101010);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
 
         // Line 1: title
         guiGraphics.drawCenteredString(font, title, width / 2, 15, 0xFFFFFFFF);
@@ -116,8 +129,6 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
                 guiGraphics.drawString(font, Component.literal("\u270E"), width / 2 + halfWidth + 4, NAME_HEADER_Y, 0xFFFFFFFF, false);
             }
         }
-
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 
     @Override

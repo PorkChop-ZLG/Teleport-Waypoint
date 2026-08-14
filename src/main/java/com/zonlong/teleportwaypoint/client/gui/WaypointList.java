@@ -2,9 +2,9 @@ package com.zonlong.teleportwaypoint.client.gui;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import com.zonlong.teleportwaypoint.network.ActivatedWaypointInfo;
-import com.zonlong.teleportwaypoint.network.TeleportRequestPayload;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -12,21 +12,24 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraft.network.chat.Component;
 
 /**
- * Scrollable list of unlocked waypoints (uses vanilla ContainerObjectSelectionList, which provides
- * the right-side scrollbar and mouse-wheel scrolling like the creative inventory).
+ * Scrollable list of unlocked waypoints with a teleport button and a delete button per entry.
  */
 public class WaypointList extends ContainerObjectSelectionList<WaypointList.Entry> {
-    private final int listWidth;
-    private final UUID selfUid;
+    private static final int DELETE_BUTTON_WIDTH = 20;
 
-    public WaypointList(int x, int y, int width, int height, UUID selfUid) {
+    private final int listWidth;
+    private final Consumer<UUID> onTeleport;
+    private final Consumer<UUID> onDelete;
+
+    public WaypointList(int x, int y, int width, int height, Consumer<UUID> onTeleport, Consumer<UUID> onDelete) {
         super(Minecraft.getInstance(), width, height, y, 22);
         setX(x);
         this.listWidth = width;
-        this.selfUid = selfUid;
+        this.onTeleport = onTeleport;
+        this.onDelete = onDelete;
     }
 
     public void setWaypoints(List<ActivatedWaypointInfo> infos) {
@@ -52,26 +55,22 @@ public class WaypointList extends ContainerObjectSelectionList<WaypointList.Entr
     public class Entry extends ContainerObjectSelectionList.Entry<Entry> {
         private final ActivatedWaypointInfo info;
         private final Button button;
+        private final Button deleteButton;
 
         public Entry(ActivatedWaypointInfo info) {
             this.info = info;
-            this.button = Button.builder(info.toComponent(), btn -> teleport()).build();
-        }
-
-        private void teleport() {
-            if (selfUid != null) {
-                PacketDistributor.sendToServer(new TeleportRequestPayload(selfUid, info.uid()));
-            }
+            this.button = Button.builder(info.toComponent(), btn -> onTeleport.accept(info.uid())).build();
+            this.deleteButton = Button.builder(Component.literal("\u2715"), btn -> onDelete.accept(info.uid())).build();
         }
 
         @Override
         public List<? extends GuiEventListener> children() {
-            return List.of(button);
+            return List.of(button, deleteButton);
         }
 
         @Override
         public List<? extends NarratableEntry> narratables() {
-            return List.of(button);
+            return List.of(button, deleteButton);
         }
 
         @Override
@@ -79,9 +78,15 @@ public class WaypointList extends ContainerObjectSelectionList<WaypointList.Entr
                            int mouseX, int mouseY, boolean hovered, float partialTick) {
             button.setX(left);
             button.setY(top);
-            button.setWidth(width);
+            button.setWidth(width - DELETE_BUTTON_WIDTH);
             button.setHeight(20);
             button.render(guiGraphics, mouseX, mouseY, partialTick);
+
+            deleteButton.setX(left + width - DELETE_BUTTON_WIDTH);
+            deleteButton.setY(top);
+            deleteButton.setWidth(DELETE_BUTTON_WIDTH);
+            deleteButton.setHeight(20);
+            deleteButton.render(guiGraphics, mouseX, mouseY, partialTick);
         }
     }
 }

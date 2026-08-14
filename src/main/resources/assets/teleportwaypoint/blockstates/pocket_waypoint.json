@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "teleportwaypoint:block/pocket_waypoint"
+    }
+  }
+}

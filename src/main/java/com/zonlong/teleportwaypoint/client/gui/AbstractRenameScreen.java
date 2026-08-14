@@ -67,9 +67,8 @@ public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> exten
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        guiGraphics.fill(0, 0, width, height, 0xC0101010);
-        guiGraphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFFFF);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
+        guiGraphics.drawCenteredString(font, title, width / 2, 20, 0xFFFFFFFF);
     }
 
     @Override

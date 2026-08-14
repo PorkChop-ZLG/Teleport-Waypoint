@@ -10,6 +10,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -63,6 +64,8 @@ public class PocketWaypointBlock extends BaseEntityBlock {
         WaypointManager.register(waypointEntity);
         if (placer instanceof ServerPlayer serverPlayer) {
             WaypointManager.activate(serverPlayer, waypointEntity);
+            // Sync block entity data before opening the GUI so the client sees the correct owner/id.
+            level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
             waypointEntity.openRenameScreen(serverPlayer);
         }
     }

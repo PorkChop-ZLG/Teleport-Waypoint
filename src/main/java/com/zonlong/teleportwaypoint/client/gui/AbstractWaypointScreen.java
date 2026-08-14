@@ -2,6 +2,7 @@ package com.zonlong.teleportwaypoint.client.gui;
 
 import com.zonlong.teleportwaypoint.menu.AbstractWaypointMenu;
 
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.MenuAccess;
 import net.minecraft.core.BlockPos;
@@ -30,6 +31,12 @@ public abstract class AbstractWaypointScreen<T extends AbstractWaypointMenu> ext
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // Opaque-ish dark background instead of the blurred vanilla background, so text stays crisp.
+        guiGraphics.fill(0, 0, width, height, 0xC0101010);
     }
 
     @Override
