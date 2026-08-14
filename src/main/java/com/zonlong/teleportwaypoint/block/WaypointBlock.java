@@ -59,7 +59,7 @@ public class WaypointBlock extends BaseEntityBlock {
             if (level instanceof ServerLevel serverLevel) {
                 serverLevel.getChunkSource().blockChanged(pos);
             }
-            waypointEntity.openRenameScreen(serverPlayer);
+            waypointEntity.openRenameScreen(serverPlayer, true);
         }
     }
 

@@ -36,7 +36,7 @@ public class WaypointBlockEntity extends BlockEntity {
     private static final String ID_PATTERN = "[a-z0-9_]+";
 
     private UUID uid;
-    private String id = "";
+    private String id = "empty";
     private String name = "";
     private UUID owner;
 
@@ -130,8 +130,13 @@ public class WaypointBlockEntity extends BlockEntity {
     }
 
     public void openRenameScreen(net.minecraft.server.level.ServerPlayer player) {
+        openRenameScreen(player, false);
+    }
+
+    /** Opens the rename screen, optionally starting with an empty input without changing the stored default name. */
+    public void openRenameScreen(net.minecraft.server.level.ServerPlayer player, boolean clearInitialText) {
         boolean canEdit = canRename(player);
-        String name = isPocketWaypoint() ? this.name : this.id;
+        String name = clearInitialText ? "" : (isPocketWaypoint() ? this.name : this.id);
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
