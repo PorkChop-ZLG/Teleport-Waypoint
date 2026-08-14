@@ -1,0 +1,13 @@
+{
+  "itemGroup.teleportwaypoint": "Example Mod Tab",
+  "block.teleportwaypoint.example_block": "Example Block",
+  "item.teleportwaypoint.example_item": "Example Item",
+
+  "teleportwaypoint.configuration.title": "Teleport Waypoint Configs",
+  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml": "Teleport Waypoint Configs",
+  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml.title": "Teleport Waypoint Configs",
+  "teleportwaypoint.configuration.items": "Item List",
+  "teleportwaypoint.configuration.logDirtBlock": "Log Dirt Block",
+  "teleportwaypoint.configuration.magicNumberIntroduction": "Magic Number Text",
+  "teleportwaypoint.configuration.magicNumber": "Magic Number"
+}
