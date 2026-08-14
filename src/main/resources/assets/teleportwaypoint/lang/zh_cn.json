@@ -1,0 +1,17 @@
+{
+  "block.teleportwaypoint.waypoint": "传送锚点",
+  "block.teleportwaypoint.pocket_waypoint": "口袋锚点",
+  "item.teleportwaypoint.pocket_waypoint": "口袋锚点",
+
+  "gui.teleportwaypoint.save": "保存",
+
+  "chat.teleportwaypoint.activated": "已激活传送锚点：%s",
+  "chat.teleportwaypoint.target_missing": "目标传送锚点已不存在。",
+  "chat.teleportwaypoint.invalid_dimension": "目标维度无效。",
+
+  "teleportwaypoint.waypoint.village": "村庄传送锚点",
+
+  "teleportwaypoint.configuration.title": "传送锚点配置",
+  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml": "传送锚点配置",
+  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml.title": "传送锚点配置"
+}

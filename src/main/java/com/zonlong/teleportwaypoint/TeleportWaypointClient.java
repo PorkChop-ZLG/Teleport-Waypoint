@@ -1,31 +1,29 @@
 package com.zonlong.teleportwaypoint;
 
-import net.minecraft.client.Minecraft;
+import com.zonlong.teleportwaypoint.client.gui.PocketWaypointScreen;
+import com.zonlong.teleportwaypoint.client.gui.WaypointScreen;
+import com.zonlong.teleportwaypoint.menu.ModMenus;
+
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
 // This class will not load on dedicated servers. Accessing client side code from here is safe.
 @Mod(value = TeleportWaypoint.MODID, dist = Dist.CLIENT)
-// You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
-@EventBusSubscriber(modid = TeleportWaypoint.MODID, value = Dist.CLIENT)
 public class TeleportWaypointClient {
-    public TeleportWaypointClient(ModContainer container) {
+    public TeleportWaypointClient(IEventBus modEventBus, ModContainer container) {
         // Allows NeoForge to create a config screen for this mod's configs.
-        // The config screen is accessed by going to the Mods screen > clicking on your mod > clicking on config.
-        // Do not forget to add translations for your config options to the en_us.json file.
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
+
+        modEventBus.addListener(TeleportWaypointClient::onRegisterMenuScreens);
     }
 
-    @SubscribeEvent
-    static void onClientSetup(FMLClientSetupEvent event) {
-        // Some client setup code
-        TeleportWaypoint.LOGGER.info("HELLO FROM CLIENT SETUP");
-        TeleportWaypoint.LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+    static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
+        event.register(ModMenus.WAYPOINT.get(), WaypointScreen::new);
+        event.register(ModMenus.POCKET_WAYPOINT.get(), PocketWaypointScreen::new);
     }
 }
