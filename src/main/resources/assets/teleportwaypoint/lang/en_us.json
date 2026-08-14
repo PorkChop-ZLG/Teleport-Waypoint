@@ -12,6 +12,11 @@
   "gui.teleportwaypoint.save": "Save",
   "gui.teleportwaypoint.close": "Close",
   "gui.teleportwaypoint.search": "Search...",
+  "gui.teleportwaypoint.delete_waypoint": "Delete Waypoint",
+  "gui.teleportwaypoint.delete_confirm_title": "Delete this waypoint?",
+  "gui.teleportwaypoint.delete_confirm_desc": "This only removes the waypoint's activation from your list; it does not destroy the block.",
+  "gui.teleportwaypoint.confirm": "Confirm",
+  "gui.teleportwaypoint.cancel": "Cancel",
 
   "chat.teleportwaypoint.waypoint_activated": "Waypoint activated: %s",
   "chat.teleportwaypoint.pocket_waypoint_activated": "Pocket Waypoint activated: %s",

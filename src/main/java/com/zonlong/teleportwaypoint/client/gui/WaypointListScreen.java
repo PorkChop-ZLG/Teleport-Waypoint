@@ -18,6 +18,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
+import net.neoforged.neoforge.client.ClientHooks;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
@@ -85,11 +86,16 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
                     }
                     onClose();
                 },
-                uid -> {
+                uid -> ClientHooks.pushGuiLayer(minecraft, new DeleteConfirmScreen(() -> {
                     PacketDistributor.sendToServer(new DeleteWaypointPayload(uid));
                     ClientWaypointState.removeActivated(uid);
-                    updateList();
-                });
+                    if (selfUid != null && uid.equals(selfUid)) {
+                        // Deleting the current waypoint closes the whole GUI.
+                        minecraft.setScreen(null);
+                    } else {
+                        updateList();
+                    }
+                })));
         addRenderableWidget(waypointList);
         updateList();
     }

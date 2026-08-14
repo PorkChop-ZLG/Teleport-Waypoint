@@ -12,6 +12,11 @@
   "gui.teleportwaypoint.save": "保存",
   "gui.teleportwaypoint.close": "关闭",
   "gui.teleportwaypoint.search": "搜索...",
+  "gui.teleportwaypoint.delete_waypoint": "删除锚点",
+  "gui.teleportwaypoint.delete_confirm_title": "是否确认删除该锚点？",
+  "gui.teleportwaypoint.delete_confirm_desc": "只会取消该锚点的激活状态，从传送列表中移除，不会删除锚点方块本身。",
+  "gui.teleportwaypoint.confirm": "确认",
+  "gui.teleportwaypoint.cancel": "取消",
 
   "chat.teleportwaypoint.waypoint_activated": "已激活传送锚点：%s",
   "chat.teleportwaypoint.pocket_waypoint_activated": "已激活口袋锚点：%s",

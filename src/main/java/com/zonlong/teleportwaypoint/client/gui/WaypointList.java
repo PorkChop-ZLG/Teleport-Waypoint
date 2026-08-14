@@ -10,6 +10,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.network.chat.Component;
@@ -67,7 +68,7 @@ public class WaypointList extends ContainerObjectSelectionList<WaypointList.Entr
             this.button = Button.builder(info.toComponent(), btn -> onTeleport.accept(info.uid())).build();
             this.button.active = !isSelf;
             this.deleteButton = Button.builder(Component.literal("\u2715"), btn -> onDelete.accept(info.uid())).build();
-            this.deleteButton.active = !isSelf;
+            this.deleteButton.setTooltip(Tooltip.create(Component.translatable("gui.teleportwaypoint.delete_waypoint")));
         }
 
         @Override
