@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 import com.zonlong.teleportwaypoint.client.ClientWaypointState;
 import com.zonlong.teleportwaypoint.menu.WaypointListMenu;
+import com.zonlong.teleportwaypoint.network.ActivatedWaypointInfo;
 import com.zonlong.teleportwaypoint.network.DeleteWaypointPayload;
 import com.zonlong.teleportwaypoint.network.OpenRenameScreenPayload;
 import com.zonlong.teleportwaypoint.network.TeleportRequestPayload;
@@ -21,6 +22,17 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu> {
+    private static final int IMAGE_WIDTH = 270;
+    private static final int IMAGE_HEIGHT = 200;
+    private static final int HEADER_HEIGHT = 64;
+    private static final int FOOTER_HEIGHT = 25;
+    private static final int ENTRY_WIDTH = 220;
+    private static final int MARGIN = 2;
+    private static final int SORT_BUTTON_WIDTH = 20;
+
+    private int leftPos;
+    private int topPos;
+
     private UUID selfUid;
     private WaypointBlockEntity selfEntity;
     private boolean canEditName;
@@ -30,14 +42,15 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
     private boolean sortByName = false;
     private Button sortButton;
 
-    private static final int LIST_WIDTH = 200;
-
     public WaypointListScreen(WaypointListMenu menu, Inventory inventory, Component title) {
         super(menu, title);
     }
 
     @Override
     protected void init() {
+        leftPos = (width - IMAGE_WIDTH) / 2;
+        topPos = (height - IMAGE_HEIGHT) / 2;
+
         selfUid = null;
         selfEntity = null;
         canEditName = false;
@@ -47,9 +60,9 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
             canEditName = canEdit(wbe);
         }
 
-        int listX = width / 2 - LIST_WIDTH / 2;
-
-        searchBox = new EditBox(font, listX, height / 2 - 60, LIST_WIDTH - 24, 20, Component.translatable("gui.teleportwaypoint.search"));
+        int searchBoxWidth = ENTRY_WIDTH - MARGIN - SORT_BUTTON_WIDTH;
+        searchBox = new EditBox(font, width / 2 - ENTRY_WIDTH / 2, topPos + HEADER_HEIGHT - 24, searchBoxWidth, 20,
+                Component.translatable("gui.teleportwaypoint.search"));
         searchBox.setMaxLength(64);
         searchBox.setResponder(text -> {
             searchText = text;
@@ -62,10 +75,10 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
                     btn.setMessage(Component.literal(sortByName ? "A-Z" : "\u2261"));
                     updateList();
                 })
-                .bounds(listX + LIST_WIDTH - 20, height / 2 - 60, 20, 20).build();
+                .bounds(searchBox.getX() + searchBox.getWidth() + MARGIN, searchBox.getY(), SORT_BUTTON_WIDTH, 20).build();
         addRenderableWidget(sortButton);
 
-        waypointList = new WaypointList(listX, height / 2 - 35, LIST_WIDTH, 130, selfUid,
+        waypointList = new WaypointList(leftPos, topPos + HEADER_HEIGHT, IMAGE_WIDTH, IMAGE_HEIGHT - HEADER_HEIGHT - FOOTER_HEIGHT, selfUid,
                 target -> {
                     if (selfUid != null) {
                         PacketDistributor.sendToServer(new TeleportRequestPayload(selfUid, target));
@@ -91,14 +104,10 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
         return minecraft.player.isCreative();
     }
 
-    private int nameHeaderY() {
-        return height / 2 - 66;
-    }
-
     private void updateList() {
         String query = searchText == null ? "" : searchText.toLowerCase();
-        List<com.zonlong.teleportwaypoint.network.ActivatedWaypointInfo> list = new ArrayList<>();
-        for (var info : ClientWaypointState.getActivated()) {
+        List<ActivatedWaypointInfo> list = new ArrayList<>();
+        for (ActivatedWaypointInfo info : ClientWaypointState.getActivated()) {
             if (!query.isEmpty() && !info.toComponent().getString().toLowerCase().contains(query)) {
                 continue;
             }
@@ -118,7 +127,7 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
         int halfWidth = font.width(name) / 2;
         int centerX = width / 2;
         return mouseX >= centerX - halfWidth - 8 && mouseX < centerX + halfWidth + 8
-                && mouseY >= nameHeaderY() && mouseY < nameHeaderY() + font.lineHeight;
+                && mouseY >= topPos + 20 && mouseY < topPos + 20 + font.lineHeight;
     }
 
     private void openRename() {
@@ -138,18 +147,18 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        // Line 1: title
-        guiGraphics.drawCenteredString(font, title, width / 2, height / 2 - 64, 0xFFFFFFFF);
+        // Line 1: title (Waystones headerY = 0 relative to topPos)
+        guiGraphics.drawCenteredString(font, title, width / 2, topPos, 0xFFFFFFFF);
 
-        // Line 2: current waypoint name (clickable when the player may rename)
+        // Line 2: current waypoint name (Waystones locationHeaderY = 20)
         if (selfEntity != null) {
             Component name = selfEntity.getDisplayName();
             boolean hovered = isNameHeaderHovered(mouseX, mouseY);
             int color = hovered ? 0xFFFFFF55 : 0xFFFFFFFF;
-            guiGraphics.drawCenteredString(font, name, width / 2, nameHeaderY(), color);
+            guiGraphics.drawCenteredString(font, name, width / 2, topPos + 20, color);
             if (hovered) {
                 int halfWidth = font.width(name) / 2;
-                guiGraphics.drawString(font, Component.literal("\u270E"), width / 2 + halfWidth + 4, nameHeaderY(), 0xFFFFFFFF, false);
+                guiGraphics.drawString(font, Component.literal("\u270E"), width / 2 + halfWidth + 4, topPos + 20, 0xFFFFFFFF, false);
             }
         }
     }
