@@ -20,7 +20,8 @@
 
   "teleportwaypoint.waypoint.empty": "未命名传送锚点",
   "teleportwaypoint.pocket_waypoint.empty": "未命名口袋锚点",
-  "teleportwaypoint.waypoint.village": "村庄传送锚点",
+  "teleportwaypoint.waypoint.village": "村庄",
+  "teleportwaypoint.waypoint.trial_chambers": "试炼密室",
 
   "teleportwaypoint.configuration.title": "传送锚点配置",
   "teleportwaypoint.configuration.section.teleportwaypoint.common.toml": "传送锚点配置",

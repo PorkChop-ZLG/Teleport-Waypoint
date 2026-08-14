@@ -29,7 +29,7 @@ import com.zonlong.teleportwaypoint.menu.WaypointListMenu;
 public class WaypointBlockEntity extends BlockEntity {
     public static final int MAX_TEXT_LENGTH = 64;
     private static final String TAG_UID = "uid";
-    private static final String TAG_ID = "id";
+    private static final String TAG_ID = "waypoint_id";
     private static final String TAG_NAME = "name";
     private static final String TAG_OWNER = "owner";
 

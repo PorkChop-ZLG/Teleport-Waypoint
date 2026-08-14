@@ -20,7 +20,8 @@
 
   "teleportwaypoint.waypoint.empty": "Unnamed Waypoint",
   "teleportwaypoint.pocket_waypoint.empty": "Unnamed Pocket Waypoint",
-  "teleportwaypoint.waypoint.village": "Village Waypoint",
+  "teleportwaypoint.waypoint.village": "Village",
+  "teleportwaypoint.waypoint.trial_chambers": "Trial Chambers",
 
   "teleportwaypoint.configuration.title": "Teleport Waypoint Configs",
   "teleportwaypoint.configuration.section.teleportwaypoint.common.toml": "Teleport Waypoint Configs",
