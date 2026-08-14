@@ -44,6 +44,8 @@ public class WaypointTeleporter {
             return;
         }
 
+        // Force-load the destination chunk so getBlockEntity doesn't return null for an unloaded chunk.
+        targetLevel.getChunk(record.pos());
         if (!(targetLevel.getBlockEntity(record.pos()) instanceof WaypointBlockEntity)) {
             // Target waypoint no longer exists; clean it up.
             WaypointRegistryData.get(server).remove(target);

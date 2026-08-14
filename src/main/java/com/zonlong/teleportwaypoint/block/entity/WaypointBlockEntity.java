@@ -95,7 +95,7 @@ public class WaypointBlockEntity extends BlockEntity {
         if (isPocketWaypoint()) {
             return name.isEmpty() ? Component.translatable("teleportwaypoint.pocket_waypoint.empty") : Component.literal(name);
         }
-        return id.isEmpty() ? Component.translatable("teleportwaypoint.waypoint.empty") : Component.translatable("teleportwaypoint.waypoint." + id);
+        return (id.isEmpty() || !isValidId(id)) ? Component.translatable("teleportwaypoint.waypoint.empty") : Component.translatable("teleportwaypoint.waypoint." + id);
     }
 
     public static boolean isValidId(String id) {

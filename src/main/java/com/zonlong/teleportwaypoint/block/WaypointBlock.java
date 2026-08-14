@@ -75,4 +75,14 @@ public class WaypointBlock extends BaseEntityBlock {
         }
         return WaypointManager.onUse(level, pos, player, waypointEntity);
     }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        if (!state.is(newState.getBlock())) {
+            if (level.getBlockEntity(pos) instanceof WaypointBlockEntity waypointEntity) {
+                WaypointManager.unregister(waypointEntity);
+            }
+        }
+        super.onRemove(state, level, pos, newState, movedByPiston);
+    }
 }

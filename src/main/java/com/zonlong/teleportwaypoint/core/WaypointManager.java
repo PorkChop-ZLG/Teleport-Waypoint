@@ -32,7 +32,12 @@ public class WaypointManager {
         if (!(be.getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
-        String name = be.isPocketWaypoint() ? be.getName() : be.getId();
+        String name;
+        if (be.isPocketWaypoint()) {
+            name = be.getName();
+        } else {
+            name = WaypointBlockEntity.isValidId(be.getId()) ? be.getId() : "empty";
+        }
         WaypointRegistryData.get(serverLevel.getServer())
                 .put(new WaypointRecord(uid, serverLevel.dimension(), be.getBlockPos(), be.isPocketWaypoint(), name));
     }
