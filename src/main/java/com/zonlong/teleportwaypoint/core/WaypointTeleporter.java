@@ -30,9 +30,14 @@ public class WaypointTeleporter {
         if (server == null) {
             return;
         }
+        if (!WaypointManager.isValidTeleportRequest(player, source, target)) {
+            player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.teleport_denied"));
+            return;
+        }
 
         Optional<WaypointRecord> recordOpt = WaypointRegistryData.get(server).get(target);
         if (recordOpt.isEmpty()) {
+            WaypointManager.removeWaypoint(server, target);
             player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.target_missing"));
             return;
         }
@@ -40,15 +45,17 @@ public class WaypointTeleporter {
         WaypointRecord record = recordOpt.get();
         ServerLevel targetLevel = server.getLevel(record.dimension());
         if (targetLevel == null) {
+            WaypointManager.removeWaypoint(server, target);
             player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.invalid_dimension"));
             return;
         }
 
         // Force-load the destination chunk so getBlockEntity doesn't return null for an unloaded chunk.
         targetLevel.getChunk(record.pos());
-        if (!(targetLevel.getBlockEntity(record.pos()) instanceof WaypointBlockEntity)) {
+        if (!(targetLevel.getBlockEntity(record.pos()) instanceof WaypointBlockEntity targetEntity)
+                || !target.equals(targetEntity.getExistingUid())) {
             // Target waypoint no longer exists; clean it up.
-            WaypointRegistryData.get(server).remove(target);
+            WaypointManager.removeWaypoint(server, target);
             player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.target_missing"));
             return;
         }

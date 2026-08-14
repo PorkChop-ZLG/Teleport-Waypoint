@@ -68,6 +68,9 @@ public class ModNetwork {
             }
             String text = payload.text();
             if (waypointEntity.isPocketWaypoint()) {
+                if (!WaypointBlockEntity.isValidName(text)) {
+                    return;
+                }
                 waypointEntity.setName(text);
             } else {
                 String newId = text.isEmpty() ? "empty" : text;

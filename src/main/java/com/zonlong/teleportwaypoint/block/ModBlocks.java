@@ -12,9 +12,9 @@ public class ModBlocks {
 
     // Unbreakable, translation-key-named waypoint placed by structures / creative mode.
     public static final DeferredBlock<WaypointBlock> WAYPOINT = BLOCKS.register("waypoint",
-            () -> new WaypointBlock(BlockBehaviour.Properties.of().strength(-1.0F, 3600000.0F)));
+            () -> new WaypointBlock(BlockBehaviour.Properties.of().strength(-1.0F, 3600000.0F).noOcclusion()));
 
     // Craftable, nameable waypoint with an owner.
     public static final DeferredBlock<PocketWaypointBlock> POCKET_WAYPOINT = BLOCKS.register("pocket_waypoint",
-            () -> new PocketWaypointBlock(BlockBehaviour.Properties.of().strength(2.0F, 6.0F)));
+            () -> new PocketWaypointBlock(BlockBehaviour.Properties.of().strength(2.0F, 6.0F).noOcclusion()));
 }

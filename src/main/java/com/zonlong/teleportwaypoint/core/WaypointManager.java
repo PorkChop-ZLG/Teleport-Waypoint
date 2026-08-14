@@ -25,11 +25,15 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public class WaypointManager {
 
     public static void register(WaypointBlockEntity be) {
-        UUID uid = be.getUid();
-        if (uid == null || be.getLevel() == null || be.getLevel().isClientSide()) {
+        if (be.getLevel() == null || be.getLevel().isClientSide()) {
             return;
         }
         if (!(be.getLevel() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        WaypointRegistryData registry = WaypointRegistryData.get(serverLevel.getServer());
+        UUID uid = ensureUniqueUid(be, registry, serverLevel);
+        if (uid == null) {
             return;
         }
         String name;
@@ -38,8 +42,7 @@ public class WaypointManager {
         } else {
             name = WaypointBlockEntity.isValidId(be.getId()) ? be.getId() : "empty";
         }
-        WaypointRegistryData.get(serverLevel.getServer())
-                .put(new WaypointRecord(uid, serverLevel.dimension(), be.getBlockPos(), be.isPocketWaypoint(), name));
+        registry.put(new WaypointRecord(uid, serverLevel.dimension(), be.getBlockPos(), be.isPocketWaypoint(), name));
     }
 
     public static void unregister(WaypointBlockEntity be) {
@@ -50,7 +53,10 @@ public class WaypointManager {
         if (!(be.getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
-        WaypointRegistryData.get(serverLevel.getServer()).remove(uid);
+        WaypointRegistryData registry = WaypointRegistryData.get(serverLevel.getServer());
+        if (registry.removeIfAt(uid, serverLevel.dimension(), be.getBlockPos())) {
+            removeWaypoint(serverLevel.getServer(), uid);
+        }
     }
 
     public static boolean isActivated(ServerPlayer player, UUID uid) {
@@ -77,6 +83,38 @@ public class WaypointManager {
     public static void deactivate(ServerPlayer player, UUID uid) {
         PlayerWaypointData.get(player.getServer()).deactivate(player.getUUID(), uid);
         syncTo(player);
+    }
+
+    public static void removeWaypoint(MinecraftServer server, UUID uid) {
+        WaypointRegistryData.get(server).remove(uid);
+        Set<UUID> affectedPlayers = PlayerWaypointData.get(server).deactivateAll(uid);
+        for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
+            if (affectedPlayers.contains(onlinePlayer.getUUID())) {
+                syncTo(onlinePlayer);
+            }
+        }
+    }
+
+    public static boolean isValidTeleportRequest(ServerPlayer player, UUID sourceUid, UUID targetUid) {
+        if (sourceUid == null || targetUid == null || sourceUid.equals(targetUid)
+                || !isActivated(player, sourceUid) || !isActivated(player, targetUid)) {
+            return false;
+        }
+        if (!(player.level() instanceof ServerLevel sourceLevel)) {
+            return false;
+        }
+
+        WaypointRegistryData registry = WaypointRegistryData.get(sourceLevel.getServer());
+        WaypointRecord source = registry.get(sourceUid).orElse(null);
+        if (source == null || !source.dimension().equals(sourceLevel.dimension())
+                || player.distanceToSqr(source.pos().getX() + 0.5, source.pos().getY() + 0.5, source.pos().getZ() + 0.5) > 64.0) {
+            return false;
+        }
+        if (!(sourceLevel.getBlockEntity(source.pos()) instanceof WaypointBlockEntity sourceEntity)
+                || !sourceUid.equals(sourceEntity.getExistingUid())) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -118,5 +156,18 @@ public class WaypointManager {
         }
         be.openListScreen(serverPlayer);
         return InteractionResult.SUCCESS;
+    }
+
+    private static UUID ensureUniqueUid(WaypointBlockEntity be, WaypointRegistryData registry, ServerLevel level) {
+        UUID uid = be.getUid();
+        while (uid != null && registry.get(uid).filter(record -> !isRegisteredAt(record, level, be.getBlockPos())).isPresent()) {
+            be.regenerateUid();
+            uid = be.getUid();
+        }
+        return uid;
+    }
+
+    private static boolean isRegisteredAt(WaypointRecord record, ServerLevel level, BlockPos pos) {
+        return record.dimension().equals(level.dimension()) && record.pos().equals(pos);
     }
 }

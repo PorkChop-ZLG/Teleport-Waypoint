@@ -3,6 +3,7 @@ package com.zonlong.teleportwaypoint.block.entity;
 import java.util.UUID;
 
 import com.zonlong.teleportwaypoint.block.ModBlocks;
+import com.zonlong.teleportwaypoint.core.WaypointManager;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -26,6 +27,7 @@ import com.zonlong.teleportwaypoint.menu.RenameWaypointMenu;
 import com.zonlong.teleportwaypoint.menu.WaypointListMenu;
 
 public class WaypointBlockEntity extends BlockEntity {
+    public static final int MAX_TEXT_LENGTH = 64;
     private static final String TAG_UID = "uid";
     private static final String TAG_ID = "id";
     private static final String TAG_NAME = "name";
@@ -34,7 +36,7 @@ public class WaypointBlockEntity extends BlockEntity {
     private static final String ID_PATTERN = "[a-z0-9_]+";
 
     private UUID uid;
-    private String id = "empty";
+    private String id = "";
     private String name = "";
     private UUID owner;
 
@@ -57,6 +59,14 @@ public class WaypointBlockEntity extends BlockEntity {
         return uid;
     }
 
+    /** Assigns a new server-side identity when a copied block entity conflicts with an existing waypoint. */
+    public void regenerateUid() {
+        if (level != null && !level.isClientSide()) {
+            uid = UUID.randomUUID();
+            setChanged();
+        }
+    }
+
     /**
      * Returns the uid without triggering lazy generation; may be null.
      */
@@ -69,7 +79,10 @@ public class WaypointBlockEntity extends BlockEntity {
     }
 
     public void setId(String id) {
-        this.id = (id == null || id.isEmpty()) ? "empty" : id;
+        if (!isValidId(id)) {
+            return;
+        }
+        this.id = id;
         setChanged();
     }
 
@@ -78,6 +91,9 @@ public class WaypointBlockEntity extends BlockEntity {
     }
 
     public void setName(String name) {
+        if (!isValidName(name)) {
+            return;
+        }
         this.name = (name == null || name.isEmpty()) ? "Pocket Waypoint" : name;
         setChanged();
     }
@@ -99,7 +115,11 @@ public class WaypointBlockEntity extends BlockEntity {
     }
 
     public static boolean isValidId(String id) {
-        return id != null && id.matches(ID_PATTERN);
+        return id != null && id.length() <= MAX_TEXT_LENGTH && id.matches(ID_PATTERN);
+    }
+
+    public static boolean isValidName(String name) {
+        return name != null && name.length() <= MAX_TEXT_LENGTH;
     }
 
     public boolean canRename(Player player) {
@@ -172,17 +192,21 @@ public class WaypointBlockEntity extends BlockEntity {
             uid = NbtUtils.loadUUID(tag.get(TAG_UID));
         }
         if (tag.contains(TAG_ID)) {
-            id = tag.getString(TAG_ID);
-            if (id.isEmpty()) {
-                id = "empty";
-            }
+            String storedId = tag.getString(TAG_ID);
+            id = isValidId(storedId) ? storedId : "empty";
         }
-        name = tag.getString(TAG_NAME);
-        if (name.isEmpty()) {
-            name = "Pocket Waypoint";
-        }
+        String storedName = tag.getString(TAG_NAME);
+        name = isValidName(storedName) && !storedName.isEmpty() ? storedName : "Pocket Waypoint";
         if (tag.contains(TAG_OWNER, Tag.TAG_INT_ARRAY)) {
             owner = NbtUtils.loadUUID(tag.get(TAG_OWNER));
+        }
+    }
+
+    @Override
+    public void onLoad() {
+        super.onLoad();
+        if (level != null && !level.isClientSide()) {
+            WaypointManager.register(this);
         }
     }
 

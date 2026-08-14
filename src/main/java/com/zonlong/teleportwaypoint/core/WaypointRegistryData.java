@@ -46,6 +46,16 @@ public class WaypointRegistryData extends SavedData {
         }
     }
 
+    public boolean removeIfAt(UUID uid, ResourceKey<Level> dimension, BlockPos pos) {
+        WaypointRecord record = waypoints.get(uid);
+        if (record == null || !record.dimension().equals(dimension) || !record.pos().equals(pos)) {
+            return false;
+        }
+        waypoints.remove(uid);
+        setDirty();
+        return true;
+    }
+
     public Optional<WaypointRecord> get(UUID uid) {
         return Optional.ofNullable(waypoints.get(uid));
     }

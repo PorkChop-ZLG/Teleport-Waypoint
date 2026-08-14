@@ -48,6 +48,20 @@ public class PlayerWaypointData extends SavedData {
         }
     }
 
+    public Set<UUID> deactivateAll(UUID waypoint) {
+        Set<UUID> affectedPlayers = new HashSet<>();
+        for (Map.Entry<UUID, Set<UUID>> entry : activated.entrySet()) {
+            if (entry.getValue().remove(waypoint)) {
+                affectedPlayers.add(entry.getKey());
+            }
+        }
+        activated.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+        if (!affectedPlayers.isEmpty()) {
+            setDirty();
+        }
+        return affectedPlayers;
+    }
+
     public Set<UUID> getActivated(UUID player) {
         return activated.getOrDefault(player, Set.of());
     }
