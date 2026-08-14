@@ -67,6 +67,7 @@ public class PocketWaypointBlock extends BaseEntityBlock {
         if (placer instanceof Player player) {
             waypointEntity.setOwner(player.getUUID());
         }
+        waypointEntity.setName("Pocket Waypoint");
         WaypointManager.register(waypointEntity);
         if (placer instanceof ServerPlayer serverPlayer) {
             WaypointManager.activate(serverPlayer, waypointEntity);

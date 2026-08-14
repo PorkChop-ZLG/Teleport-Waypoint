@@ -8,10 +8,13 @@ import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 
 /**
  * Resolves a landing position next to a waypoint (following the Waystones approach) and performs
@@ -56,6 +59,12 @@ public class WaypointTeleporter {
                 Set.of(),
                 landing.yaw(),
                 player.getXRot());
+
+        // Teleport sound and portal particles (like Waystones).
+        targetLevel.playSound(null, record.pos(), SoundEvents.PORTAL_TRAVEL, SoundSource.PLAYERS, 0.5f, 1f);
+        targetLevel.sendParticles(player, ParticleTypes.PORTAL, true,
+                record.pos().getX() + 0.5, record.pos().getY() + 1.0, record.pos().getZ() + 0.5,
+                128, 1.5, 1.5, 1.5, 0.1);
     }
 
     private static Landing findLanding(ServerLevel level, BlockPos pos) {

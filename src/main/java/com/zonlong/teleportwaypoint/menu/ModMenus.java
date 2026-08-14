@@ -16,12 +16,22 @@ public class ModMenus {
 
     public static final DeferredHolder<MenuType<?>, MenuType<RenameWaypointMenu>> RENAME_WAYPOINT =
             MENUS.register("rename_waypoint", () -> new MenuType<>(
-                    (IContainerFactory<RenameWaypointMenu>) (windowId, inv, data) -> new RenameWaypointMenu(ModMenus.RENAME_WAYPOINT.get(), windowId, readPos(data)),
+                    (IContainerFactory<RenameWaypointMenu>) (windowId, inv, data) -> {
+                        BlockPos pos = data == null ? BlockPos.ZERO : data.readBlockPos();
+                        boolean canEdit = data != null && data.readBoolean();
+                        String name = data != null ? data.readUtf() : "";
+                        return new RenameWaypointMenu(ModMenus.RENAME_WAYPOINT.get(), windowId, pos, canEdit, name);
+                    },
                     FeatureFlags.VANILLA_SET));
 
     public static final DeferredHolder<MenuType<?>, MenuType<RenamePocketWaypointMenu>> RENAME_POCKET_WAYPOINT =
             MENUS.register("rename_pocket_waypoint", () -> new MenuType<>(
-                    (IContainerFactory<RenamePocketWaypointMenu>) (windowId, inv, data) -> new RenamePocketWaypointMenu(ModMenus.RENAME_POCKET_WAYPOINT.get(), windowId, readPos(data)),
+                    (IContainerFactory<RenamePocketWaypointMenu>) (windowId, inv, data) -> {
+                        BlockPos pos = data == null ? BlockPos.ZERO : data.readBlockPos();
+                        boolean canEdit = data != null && data.readBoolean();
+                        String name = data != null ? data.readUtf() : "";
+                        return new RenamePocketWaypointMenu(ModMenus.RENAME_POCKET_WAYPOINT.get(), windowId, pos, canEdit, name);
+                    },
                     FeatureFlags.VANILLA_SET));
 
     public static final DeferredHolder<MenuType<?>, MenuType<WaypointListMenu>> WAYPOINT_LIST =

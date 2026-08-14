@@ -1,7 +1,9 @@
 package com.zonlong.teleportwaypoint.client.gui;
 
-import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
+import java.util.function.Predicate;
+
 import com.zonlong.teleportwaypoint.menu.AbstractWaypointMenu;
+import com.zonlong.teleportwaypoint.menu.RenameMenu;
 import com.zonlong.teleportwaypoint.network.RenameWaypointPayload;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -9,16 +11,14 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
-import java.util.function.Predicate;
-
 /**
- * Base screen for the two rename GUIs (rename waypoint / rename pocket waypoint).
+ * Base screen for the two rename GUIs. Rename capability and current name are provided by the menu
+ * (computed on the server), not read from the client block entity.
  */
-public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> extends AbstractWaypointScreen<T> {
+public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu & RenameMenu> extends AbstractWaypointScreen<T> {
     private EditBox textEdit;
     private boolean canEdit;
 
@@ -26,22 +26,14 @@ public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> exten
         super(menu, title);
     }
 
-    protected abstract boolean canEdit(WaypointBlockEntity blockEntity, Player player);
-
-    protected abstract String getCurrentText(WaypointBlockEntity blockEntity);
-
     protected Predicate<String> textFilter() {
         return null;
     }
 
     @Override
     protected void init() {
-        canEdit = false;
-        String current = "";
-        if (minecraft != null && minecraft.level != null && minecraft.level.getBlockEntity(pos) instanceof WaypointBlockEntity wbe) {
-            canEdit = canEdit(wbe, minecraft.player);
-            current = getCurrentText(wbe);
-        }
+        canEdit = menu.canEdit();
+        String current = menu.getName();
 
         int boxWidth = 136;
         int boxX = width / 2 - boxWidth / 2;

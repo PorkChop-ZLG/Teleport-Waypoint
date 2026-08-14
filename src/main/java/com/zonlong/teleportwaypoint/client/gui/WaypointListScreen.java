@@ -30,7 +30,6 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
     private boolean sortByName = false;
     private Button sortButton;
 
-    private static final int NAME_HEADER_Y = 32;
     private static final int LIST_WIDTH = 200;
 
     public WaypointListScreen(WaypointListMenu menu, Inventory inventory, Component title) {
@@ -92,6 +91,10 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
         return minecraft.player.isCreative();
     }
 
+    private int nameHeaderY() {
+        return height / 2 - 66;
+    }
+
     private void updateList() {
         String query = searchText == null ? "" : searchText.toLowerCase();
         List<com.zonlong.teleportwaypoint.network.ActivatedWaypointInfo> list = new ArrayList<>();
@@ -115,7 +118,7 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
         int halfWidth = font.width(name) / 2;
         int centerX = width / 2;
         return mouseX >= centerX - halfWidth - 8 && mouseX < centerX + halfWidth + 8
-                && mouseY >= NAME_HEADER_Y && mouseY < NAME_HEADER_Y + font.lineHeight;
+                && mouseY >= nameHeaderY() && mouseY < nameHeaderY() + font.lineHeight;
     }
 
     private void openRename() {
@@ -136,17 +139,17 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
         // Line 1: title
-        guiGraphics.drawCenteredString(font, title, width / 2, 15, 0xFFFFFFFF);
+        guiGraphics.drawCenteredString(font, title, width / 2, height / 2 - 64, 0xFFFFFFFF);
 
         // Line 2: current waypoint name (clickable when the player may rename)
         if (selfEntity != null) {
             Component name = selfEntity.getDisplayName();
             boolean hovered = isNameHeaderHovered(mouseX, mouseY);
             int color = hovered ? 0xFFFFFF55 : 0xFFFFFFFF;
-            guiGraphics.drawCenteredString(font, name, width / 2, NAME_HEADER_Y, color);
+            guiGraphics.drawCenteredString(font, name, width / 2, nameHeaderY(), color);
             if (hovered) {
                 int halfWidth = font.width(name) / 2;
-                guiGraphics.drawString(font, Component.literal("\u270E"), width / 2 + halfWidth + 4, NAME_HEADER_Y, 0xFFFFFFFF, false);
+                guiGraphics.drawString(font, Component.literal("\u270E"), width / 2 + halfWidth + 4, nameHeaderY(), 0xFFFFFFFF, false);
             }
         }
     }

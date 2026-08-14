@@ -44,7 +44,8 @@ public class WaypointList extends ContainerObjectSelectionList<WaypointList.Entr
 
     @Override
     public int getRowWidth() {
-        return listWidth;
+        // Leave room for the scrollbar so it stays visible and draggable.
+        return listWidth - 20;
     }
 
     @Override

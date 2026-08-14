@@ -78,7 +78,7 @@ public class WaypointBlockEntity extends BlockEntity {
     }
 
     public void setName(String name) {
-        this.name = name;
+        this.name = (name == null || name.isEmpty()) ? "Pocket Waypoint" : name;
         setChanged();
     }
 
@@ -102,7 +102,16 @@ public class WaypointBlockEntity extends BlockEntity {
         return id != null && id.matches(ID_PATTERN);
     }
 
+    public boolean canRename(Player player) {
+        if (player.isCreative()) {
+            return true;
+        }
+        return isPocketWaypoint() && owner != null && owner.equals(player.getUUID());
+    }
+
     public void openRenameScreen(net.minecraft.server.level.ServerPlayer player) {
+        boolean canEdit = canRename(player);
+        String name = isPocketWaypoint() ? this.name : this.id;
         player.openMenu(new MenuProvider() {
             @Override
             public Component getDisplayName() {
@@ -114,11 +123,15 @@ public class WaypointBlockEntity extends BlockEntity {
             @Override
             public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
                 if (isPocketWaypoint()) {
-                    return new RenamePocketWaypointMenu(ModMenus.RENAME_POCKET_WAYPOINT.get(), containerId, getBlockPos());
+                    return new RenamePocketWaypointMenu(ModMenus.RENAME_POCKET_WAYPOINT.get(), containerId, getBlockPos(), canEdit, name);
                 }
-                return new RenameWaypointMenu(ModMenus.RENAME_WAYPOINT.get(), containerId, getBlockPos());
+                return new RenameWaypointMenu(ModMenus.RENAME_WAYPOINT.get(), containerId, getBlockPos(), canEdit, name);
             }
-        }, buf -> buf.writeBlockPos(getBlockPos()));
+        }, buf -> {
+            buf.writeBlockPos(getBlockPos());
+            buf.writeBoolean(canEdit);
+            buf.writeUtf(name);
+        });
     }
 
     public void openListScreen(net.minecraft.server.level.ServerPlayer player) {
@@ -165,6 +178,9 @@ public class WaypointBlockEntity extends BlockEntity {
             }
         }
         name = tag.getString(TAG_NAME);
+        if (name.isEmpty()) {
+            name = "Pocket Waypoint";
+        }
         if (tag.contains(TAG_OWNER, Tag.TAG_INT_ARRAY)) {
             owner = NbtUtils.loadUUID(tag.get(TAG_OWNER));
         }
