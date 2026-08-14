@@ -4,14 +4,15 @@ import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 import com.zonlong.teleportwaypoint.core.WaypointManager;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -41,6 +42,11 @@ public class WaypointBlock extends BaseEntityBlock {
     }
 
     @Override
+    protected RenderShape getRenderShape(BlockState state) {
+        return RenderShape.MODEL;
+    }
+
+    @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
         if (level.isClientSide() || !(level.getBlockEntity(pos) instanceof WaypointBlockEntity waypointEntity)) {
@@ -50,7 +56,9 @@ public class WaypointBlock extends BaseEntityBlock {
         if (placer instanceof ServerPlayer serverPlayer) {
             WaypointManager.activate(serverPlayer, waypointEntity);
             // Sync block entity data before opening the GUI so the client sees the correct owner/id.
-            level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
+            if (level instanceof ServerLevel serverLevel) {
+                serverLevel.getChunkSource().blockChanged(pos);
+            }
             waypointEntity.openRenameScreen(serverPlayer);
         }
     }

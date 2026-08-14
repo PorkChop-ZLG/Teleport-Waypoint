@@ -7,6 +7,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 
+import java.util.function.Predicate;
+
 public class RenameWaypointScreen extends AbstractRenameScreen<RenameWaypointMenu> {
 
     public RenameWaypointScreen(RenameWaypointMenu menu, Inventory inventory, Component title) {
@@ -21,5 +23,10 @@ public class RenameWaypointScreen extends AbstractRenameScreen<RenameWaypointMen
     @Override
     protected String getCurrentText(WaypointBlockEntity blockEntity) {
         return blockEntity.getId();
+    }
+
+    @Override
+    protected Predicate<String> textFilter() {
+        return s -> s.matches("[a-z0-9_]*");
     }
 }

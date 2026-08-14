@@ -13,6 +13,8 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.function.Predicate;
+
 /**
  * Base screen for the two rename GUIs (rename waypoint / rename pocket waypoint).
  */
@@ -27,6 +29,10 @@ public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> exten
     protected abstract boolean canEdit(WaypointBlockEntity blockEntity, Player player);
 
     protected abstract String getCurrentText(WaypointBlockEntity blockEntity);
+
+    protected Predicate<String> textFilter() {
+        return null;
+    }
 
     @Override
     protected void init() {
@@ -45,6 +51,10 @@ public abstract class AbstractRenameScreen<T extends AbstractWaypointMenu> exten
         textEdit.setMaxLength(64);
         textEdit.setValue(current);
         textEdit.setEditable(canEdit);
+        Predicate<String> filter = textFilter();
+        if (filter != null) {
+            textEdit.setFilter(filter);
+        }
         addRenderableWidget(textEdit);
 
         addRenderableWidget(Button.builder(

@@ -1,5 +1,8 @@
 package com.zonlong.teleportwaypoint.client.gui;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
@@ -10,6 +13,7 @@ import com.zonlong.teleportwaypoint.network.OpenRenameScreenPayload;
 import com.zonlong.teleportwaypoint.network.TeleportRequestPayload;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
@@ -23,6 +27,8 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
     private EditBox searchBox;
     private WaypointList waypointList;
     private String searchText = "";
+    private boolean sortByName = false;
+    private Button sortButton;
 
     private static final int NAME_HEADER_Y = 32;
     private static final int LIST_WIDTH = 200;
@@ -44,7 +50,7 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
 
         int listX = width / 2 - LIST_WIDTH / 2;
 
-        searchBox = new EditBox(font, listX, height / 2 - 60, LIST_WIDTH, 20, Component.translatable("gui.teleportwaypoint.search"));
+        searchBox = new EditBox(font, listX, height / 2 - 60, LIST_WIDTH - 24, 20, Component.translatable("gui.teleportwaypoint.search"));
         searchBox.setMaxLength(64);
         searchBox.setResponder(text -> {
             searchText = text;
@@ -52,7 +58,15 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
         });
         addRenderableWidget(searchBox);
 
-        waypointList = new WaypointList(listX, height / 2 - 35, LIST_WIDTH, 130,
+        sortButton = Button.builder(Component.literal(sortByName ? "A-Z" : "\u2261"), btn -> {
+                    sortByName = !sortByName;
+                    btn.setMessage(Component.literal(sortByName ? "A-Z" : "\u2261"));
+                    updateList();
+                })
+                .bounds(listX + LIST_WIDTH - 20, height / 2 - 60, 20, 20).build();
+        addRenderableWidget(sortButton);
+
+        waypointList = new WaypointList(listX, height / 2 - 35, LIST_WIDTH, 130, selfUid,
                 target -> {
                     if (selfUid != null) {
                         PacketDistributor.sendToServer(new TeleportRequestPayload(selfUid, target));
@@ -80,11 +94,17 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
 
     private void updateList() {
         String query = searchText == null ? "" : searchText.toLowerCase();
-        var filtered = ClientWaypointState.getActivated().stream()
-                .filter(info -> selfUid == null || !info.uid().equals(selfUid))
-                .filter(info -> query.isEmpty() || info.toComponent().getString().toLowerCase().contains(query))
-                .toList();
-        waypointList.setWaypoints(filtered);
+        List<com.zonlong.teleportwaypoint.network.ActivatedWaypointInfo> list = new ArrayList<>();
+        for (var info : ClientWaypointState.getActivated()) {
+            if (!query.isEmpty() && !info.toComponent().getString().toLowerCase().contains(query)) {
+                continue;
+            }
+            list.add(info);
+        }
+        if (sortByName) {
+            list.sort(Comparator.comparing(info -> info.toComponent().getString()));
+        }
+        waypointList.setWaypoints(list);
     }
 
     private boolean isNameHeaderHovered(double mouseX, double mouseY) {

@@ -31,7 +31,7 @@ public class WaypointBlockEntity extends BlockEntity {
     private static final String TAG_NAME = "name";
     private static final String TAG_OWNER = "owner";
 
-    private static final String ID_PATTERN = "[a-z0-9]+";
+    private static final String ID_PATTERN = "[a-z0-9_]+";
 
     private UUID uid;
     private String id = "empty";
