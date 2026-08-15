@@ -77,6 +77,13 @@ public class WaypointManager {
 
         syncTo(player);
 
+        // 激活音效：经验球拾取声，在方块位置播放（附近玩家可闻）
+        if (be.getLevel() instanceof ServerLevel serverLevel) {
+            serverLevel.playSound(null, be.getBlockPos(),
+                    net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP,
+                    net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
+        }
+
         if (showMessage) {
             String key = be.isPocketWaypoint() ? "chat.teleportwaypoint.pocket_waypoint_activated" : "chat.teleportwaypoint.waypoint_activated";
             player.sendSystemMessage(Component.translatable(key, be.getDisplayName()));
@@ -155,7 +162,9 @@ public class WaypointManager {
             return InteractionResult.FAIL;
         }
         if (!isActivated(serverPlayer, uid)) {
+            // 未解锁：仅激活（提示 + 音效），不弹 GUI；再次右键（已解锁）才打开列表
             activate(serverPlayer, be, true);
+            return InteractionResult.SUCCESS;
         }
         be.openListScreen(serverPlayer);
         return InteractionResult.SUCCESS;

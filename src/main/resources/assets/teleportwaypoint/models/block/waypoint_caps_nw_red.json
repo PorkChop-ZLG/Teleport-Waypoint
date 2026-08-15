@@ -2,20 +2,20 @@
   "credit": "Made with Blockbench",
   "ambientocclusion": false,
   "textures": {
-    "particle": "teleportwaypoint:block/waypoint_orb_red",
-    "waypoint_orb_red": "teleportwaypoint:block/waypoint_orb_red"
+    "particle": "teleportwaypoint:block/waypoint_caps_red",
+    "waypoint_caps_red": "teleportwaypoint:block/waypoint_caps_red"
   },
   "elements": [
     {
       "from": [
-        7.25,
-        14.25,
-        7.25
+        1,
+        12,
+        1
       ],
       "to": [
-        8.75,
-        15.75,
-        8.75
+        3,
+        14,
+        3
       ],
       "faces": {
         "down": {
@@ -25,7 +25,7 @@
             9,
             9
           ],
-          "texture": "#waypoint_orb_red"
+          "texture": "#waypoint_caps_red"
         },
         "up": {
           "uv": [
@@ -34,7 +34,7 @@
             9,
             9
           ],
-          "texture": "#waypoint_orb_red"
+          "texture": "#waypoint_caps_red"
         },
         "north": {
           "uv": [
@@ -43,7 +43,7 @@
             9,
             9
           ],
-          "texture": "#waypoint_orb_red"
+          "texture": "#waypoint_caps_red"
         },
         "south": {
           "uv": [
@@ -52,7 +52,7 @@
             9,
             9
           ],
-          "texture": "#waypoint_orb_red"
+          "texture": "#waypoint_caps_red"
         },
         "west": {
           "uv": [
@@ -61,7 +61,7 @@
             9,
             9
           ],
-          "texture": "#waypoint_orb_red"
+          "texture": "#waypoint_caps_red"
         },
         "east": {
           "uv": [
@@ -70,7 +70,7 @@
             9,
             9
           ],
-          "texture": "#waypoint_orb_red"
+          "texture": "#waypoint_caps_red"
         }
       },
       "shade": false

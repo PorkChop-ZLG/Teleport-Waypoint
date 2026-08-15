@@ -5,7 +5,8 @@
     "particle": "teleportwaypoint:block/waypoint_base",
     "waypoint_base": "teleportwaypoint:block/waypoint_base",
     "waypoint_base_top": "teleportwaypoint:block/waypoint_base_top",
-    "waypoint_pillar": "teleportwaypoint:block/waypoint_pillar"
+    "waypoint_pillar": "teleportwaypoint:block/waypoint_pillar",
+    "waypoint_pillar_top": "teleportwaypoint:block/waypoint_pillar_top"
   },
   "elements": [
     {
@@ -129,6 +130,15 @@
             11
           ],
           "texture": "#waypoint_pillar"
+        },
+        "up": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_pillar_top"
         }
       },
       "shade": true
@@ -180,6 +190,15 @@
             11
           ],
           "texture": "#waypoint_pillar"
+        },
+        "up": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_pillar_top"
         }
       },
       "shade": true
@@ -231,6 +250,15 @@
             11
           ],
           "texture": "#waypoint_pillar"
+        },
+        "up": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_pillar_top"
         }
       },
       "shade": true
@@ -282,6 +310,15 @@
             11
           ],
           "texture": "#waypoint_pillar"
+        },
+        "up": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_pillar_top"
         }
       },
       "shade": true

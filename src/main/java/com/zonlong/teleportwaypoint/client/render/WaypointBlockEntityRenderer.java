@@ -29,7 +29,7 @@ import com.zonlong.teleportwaypoint.client.ClientWaypointState;
  *
  * 状态外观（per-player）：已解锁 → 青色组（默认设计）；未解锁 → 红色组（红色主题贴图）。
  * 两组共用同一套动画变换：
- *   - 柱顶水晶（caps）：静止
+ *   - 四颗悬浮柱顶水晶（caps_nw/ne/sw/se）：各自 y = 0.25·sin(t·0.1 + φᵢ) 浮动，相位错开
  *   - 晶核（crystal）：绕 Y 轴匀速自转，360° / 12 秒
  *   - 能量环（ring）：绕 Y 轴反向慢转，360° / 24 秒，并上下轻柔浮动
  *   - 核心光球（orb）：上下浮动 + 呼吸式脉冲缩放
@@ -42,17 +42,27 @@ public class WaypointBlockEntityRenderer implements BlockEntityRenderer<Waypoint
 
     private static final String MODEL_PATH = TeleportWaypoint.MODID + ":block/";
 
+    private static final String[] CAP_POSITIONS = {"nw", "ne", "sw", "se"};
+
     /** 青色组（已解锁，默认设计） */
-    public static final ModelResourceLocation CAPS_MODEL = standalone("waypoint_caps");
+    public static final ModelResourceLocation[] CAPS_MODELS = capsModels("");
     public static final ModelResourceLocation CRYSTAL_MODEL = standalone("waypoint_crystal");
     public static final ModelResourceLocation RING_MODEL = standalone("waypoint_ring");
     public static final ModelResourceLocation ORB_MODEL = standalone("waypoint_orb");
 
     /** 红色组（未解锁，红色主题贴图） */
-    public static final ModelResourceLocation CAPS_RED_MODEL = standalone("waypoint_caps_red");
+    public static final ModelResourceLocation[] CAPS_RED_MODELS = capsModels("_red");
     public static final ModelResourceLocation CRYSTAL_RED_MODEL = standalone("waypoint_crystal_red");
     public static final ModelResourceLocation RING_RED_MODEL = standalone("waypoint_ring_red");
     public static final ModelResourceLocation ORB_RED_MODEL = standalone("waypoint_orb_red");
+
+    private static ModelResourceLocation[] capsModels(String suffix) {
+        ModelResourceLocation[] models = new ModelResourceLocation[CAP_POSITIONS.length];
+        for (int i = 0; i < CAP_POSITIONS.length; i++) {
+            models[i] = standalone("waypoint_caps_" + CAP_POSITIONS[i] + suffix);
+        }
+        return models;
+    }
 
     private static ModelResourceLocation standalone(String path) {
         return ModelResourceLocation.standalone(ResourceLocation.parse(MODEL_PATH + path));
@@ -60,6 +70,11 @@ public class WaypointBlockEntityRenderer implements BlockEntityRenderer<Waypoint
 
     /** 全亮光照：发光部件自发光，不受昼夜/光照影响 */
     private static final int FULL_BRIGHT = LightTexture.FULL_BRIGHT;
+
+    /** 四颗悬浮水晶的错开相位（0°/90°/180°/270°） */
+    private static final float[] CAP_PHASES = {0.0F, (float) (Math.PI / 2), (float) Math.PI, (float) (Math.PI * 1.5)};
+    /** 悬浮浮动幅度（格）：±0.125，保证最低点 y11.875 高于柱顶 y10（防穿模） */
+    private static final float CAP_AMPLITUDE = 0.125F;
 
     private final RandomSource random = RandomSource.create();
 
@@ -77,13 +92,18 @@ public class WaypointBlockEntityRenderer implements BlockEntityRenderer<Waypoint
 
         // 状态外观（per-player）：已解锁 → 青色组；未解锁 → 红色组
         boolean activated = ClientWaypointState.isActivated(blockEntity.getExistingUid());
-        var caps = modelManager.getModel(activated ? CAPS_MODEL : CAPS_RED_MODEL);
+        var capsModels = activated ? CAPS_MODELS : CAPS_RED_MODELS;
         var crystal = modelManager.getModel(activated ? CRYSTAL_MODEL : CRYSTAL_RED_MODEL);
         var ring = modelManager.getModel(activated ? RING_MODEL : RING_RED_MODEL);
         var orb = modelManager.getModel(activated ? ORB_MODEL : ORB_RED_MODEL);
 
-        // 1) 柱顶水晶：静止
-        renderBakedModel(pose, buffer, caps, p -> { });
+        // 1) 四颗悬浮柱顶水晶：错开相位上下浮动
+        for (int i = 0; i < CAP_POSITIONS.length; i++) {
+            final float phase = CAP_PHASES[i];
+            renderBakedModel(pose, buffer, modelManager.getModel(capsModels[i]), p -> {
+                p.translate(0.0, (float) Math.sin(t * 0.1 + phase) * CAP_AMPLITUDE, 0.0);
+            });
+        }
 
         // 2) 晶核：绕方块中心 Y 轴自转（360° / 12 秒）
         renderBakedModel(pose, buffer, crystal, p -> {

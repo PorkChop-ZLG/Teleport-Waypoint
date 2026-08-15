@@ -7,6 +7,7 @@ import com.zonlong.teleportwaypoint.client.gui.WaypointListScreen;
 import com.zonlong.teleportwaypoint.client.render.WaypointBlockEntityRenderer;
 import com.zonlong.teleportwaypoint.menu.ModMenus;
 
+import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -42,11 +43,15 @@ public class TeleportWaypointClient {
 
     /** 注册发光部件附加模型（青色组 + 红色组），供 BER 烘焙使用 */
     static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event) {
-        event.register(WaypointBlockEntityRenderer.CAPS_MODEL);
+        for (ModelResourceLocation model : WaypointBlockEntityRenderer.CAPS_MODELS) {
+            event.register(model);
+        }
+        for (ModelResourceLocation model : WaypointBlockEntityRenderer.CAPS_RED_MODELS) {
+            event.register(model);
+        }
         event.register(WaypointBlockEntityRenderer.CRYSTAL_MODEL);
         event.register(WaypointBlockEntityRenderer.RING_MODEL);
         event.register(WaypointBlockEntityRenderer.ORB_MODEL);
-        event.register(WaypointBlockEntityRenderer.CAPS_RED_MODEL);
         event.register(WaypointBlockEntityRenderer.CRYSTAL_RED_MODEL);
         event.register(WaypointBlockEntityRenderer.RING_RED_MODEL);
         event.register(WaypointBlockEntityRenderer.ORB_RED_MODEL);
