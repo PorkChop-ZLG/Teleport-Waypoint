@@ -1,25 +1,158 @@
+# Teleport Waypoint（传送锚点）
 
-Installation information
-=======
+一个 Minecraft **1.21.1 NeoForge** 模组：在世界上放置锚点，右键激活后，即可在任意已激活的锚点之间传送，支持跨维度。
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+- **Mod ID：** `teleportwaypoint`
+- **版本：** `0.0.1`
+- **加载器：** NeoForge `21.1.236+`
+- **游戏版本：** Minecraft `1.21.1`
+- **许可：** MIT
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+---
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+## 已实现功能
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+- 两种锚点方块：不可破坏的**传送锚点**与可破坏的**口袋锚点**
+- 右键激活锚点，激活状态按玩家独立保存
+- 在任意两个已激活锚点之间传送（**支持跨维度**），自动选择落点并带传送音效/粒子
+- 服务端严格校验传送请求，防止伪造与作弊
+- 完整的传送列表 GUI：传送、删除、搜索、排序
+- 改名界面：口袋锚点自由命名，普通锚点使用 ID（翻译键）命名
+- 删除确认弹窗（只取消激活，不破坏方块）
+- 玩家登录时自动同步已激活锚点列表
+- 内置试炼密室结构替换，使试炼密室的走廊末端自然出现传送锚点（当前为测试用途）
+- 完整的中文（简体）与英文语言文件
+- 自定义创造模式标签页，包含全部锚点物品
+- NeoForge 配置界面入口（暂无实际可调选项）
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+---
+
+## 快速上手
+
+### 1. 获取锚点
+
+| 方块 | 获取方式 |
+|------|----------|
+| 传送锚点（Waypoint） | 创造模式物品栏；试炼密室自然生成（不可破坏） |
+| 口袋锚点（Pocket Waypoint） | 创造模式物品栏（合成配方与掉落表尚未实现） |
+
+### 2. 放置与首次命名
+
+- 放下锚点后会自动激活，并弹出命名界面：
+  - **传送锚点**：只能填写小写字母、数字和下划线（`[a-z0-9_]*`），用于组成翻译键名称；
+  - **口袋锚点**：可填写任意名称（最长 64 个字符），空名称会回退为 `Pocket Waypoint`。
+- 按 `Enter` 保存，`Esc` 关闭。
+
+### 3. 激活锚点
+
+- 右键点击未激活的锚点 → 自动激活并打开传送列表，同时聊天栏提示激活成功。
+- 激活状态对每名玩家独立保存，并写入世界存档。
+
+### 4. 传送
+
+1. 右键点击任意已激活的锚点，打开**传送列表**；
+2. 列表中会显示你已激活的全部锚点；
+3. 点击目标锚点的按钮即可传送，落点会自动选在锚点旁可站立的位置。
+
+> 传送校验：源锚点与目标锚点都必须是你已激活的，且你需要站在源锚点 **8 格以内**。
+
+### 5. 改名
+
+- **潜行 + 右键**锚点可直接打开改名界面；
+- 或者在传送列表中**点击标题栏上的锚点名称（带 ✎ 图标）**进行改名。
+
+### 6. 删除激活
+
+- 传送列表中每项右侧的 **✕** 按钮用于删除该锚点的激活记录；
+- 会先弹出确认窗口——**只会从你的列表移除，不会破坏锚点方块本身**；
+- 若删除的是你当前正在使用的锚点，整个界面会自动关闭。
+
+---
+
+## 两种锚点对比
+
+| | 传送锚点 `waypoint` | 口袋锚点 `pocket_waypoint` |
+|---|---|---|
+| 硬度 / 抗爆 | 不可破坏（`-1` / `3,600,000`） | 可破坏（`2` / `6`） |
+| 命名方式 | ID + 翻译键（如“村庄”“试炼密室”） | 自由文本名称 |
+| 所有者 | 无 | 绑定放置者 UUID |
+| 改名权限 | 仅创造模式玩家 | 仅所有者（创造模式玩家可改任意口袋锚点） |
+| 主要来源 | 试炼密室结构 / 创造模式 | 创造模式（配方待实现） |
+
+---
+
+## 权限规则
+
+| 操作 | 传送锚点 | 口袋锚点 |
+|------|----------|----------|
+| 激活 / 传送 | 任意玩家 | 任意玩家 |
+| 改名 | 创造模式玩家 | 所有者；创造模式玩家 |
+| 破坏方块 | 不可破坏 | 可破坏（当前无掉落表） |
+
+所有改名与传送请求都会在**服务端**重新校验，客户端伪造的请求会被静默拒绝。
+
+---
+
+## 数据存储
+
+模组使用两类世界 SavedData 持久化数据：
+
+| 文件 | 内容 |
+|------|------|
+| `teleportwaypoint_waypoints` | 全局锚点索引：UID → 维度 / 坐标 / 类型 / 名称 |
+| `teleportwaypoint_players` | 每名玩家的激活锚点 UID 集合 |
+
+锚点方块实体自身还会在 NBT 中保存 `uid`、`waypoint_id`、`name`、`owner`；复制粘贴等操作导致 UID 冲突时会自动重新生成 UID。
+
+---
+
+## 构建与开发
+
+要求：**JDK 21**。
+
+```bash
+# 构建（Windows 使用 gradlew.bat）
+./gradlew build
+# 产物位于 build/libs/teleportwaypoint-0.0.1.jar
+
+# 启动开发客户端
+./gradlew runClient
+
+# 启动开发服务端
+./gradlew runServer
+```
+
+项目结构：
+
+```
+src/main/java/com/zonlong/teleportwaypoint/
+├── block/            # 方块与方块实体注册、交互逻辑
+├── core/             # 激活/索引管理、SavedData、传送逻辑
+├── menu/             # 菜单（Menu）定义
+├── network/          # 自定义 Payload 与网络处理
+├── item/             # 物品与创造标签页
+└── client/           # 客户端状态与 GUI 界面
+```
+
+---
+
+## 兼容性
+
+- **Minecraft：** `1.21.1`
+- **NeoForge：** `21.1.236` 及以上（`[21.1.236,)`）
+- 客户端与服务端均可用，客户端类仅在客户端加载。
+
+---
+
+## 已知限制与后续计划
+
+- 口袋锚点暂无**合成配方**与**掉落表**（生存模式暂无法获取）
+- 锚点暂未实现按玩家激活状态区分**红/蓝外观**（BER 渲染）
+- **Xaero 地图联动**计划在模组本体完成后作为可选集成
+- 试炼密室结构替换目前为**测试用途**，生成规模与方式后续可能调整
+
+---
+
+## 许可
+
+MIT License（见 `gradle.properties` 中的 `mod_license=MIT`）。仓库内的 `TEMPLATE_LICENSE.txt` 是 NeoForged MDK 模板附带许可文本。
