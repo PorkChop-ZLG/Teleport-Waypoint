@@ -22,38 +22,48 @@ import net.minecraft.util.RandomSource;
 
 import com.zonlong.teleportwaypoint.TeleportWaypoint;
 import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
+import com.zonlong.teleportwaypoint.client.ClientWaypointState;
 
 /**
- * 传送锚点动态渲染器（BER）
+ * 传送锚点发光部件渲染器（BER）
  *
- * 游戏内模型 = 静态层（blockstate 模型：底座 + 支柱 + 柱顶水晶）
- *            + 动态层（本渲染器叠加，全亮自发光）：
- *   - 晶核（waypoint_crystal）：绕 Y 轴匀速自转，360° / 12 秒
- *   - 能量环（waypoint_ring）：绕 Y 轴反向慢转，360° / 24 秒，并上下轻柔浮动
- *   - 核心光球（waypoint_orb）：上下浮动 + 呼吸式脉冲缩放
+ * 状态外观（per-player）：已解锁 → 青色组（默认设计）；未解锁 → 红色组（红色主题贴图）。
+ * 两组共用同一套动画变换：
+ *   - 柱顶水晶（caps）：静止
+ *   - 晶核（crystal）：绕 Y 轴匀速自转，360° / 12 秒
+ *   - 能量环（ring）：绕 Y 轴反向慢转，360° / 24 秒，并上下轻柔浮动
+ *   - 核心光球（orb）：上下浮动 + 呼吸式脉冲缩放
+ * 全部全亮自发光（FULL_BRIGHT），夜晚清晰可见。
  *
- * 口袋锚点暂不叠加动态层（其静态模型独立设计）。
+ * 石材底座/支柱由 blockstate 模型渲染（本色，青色符文保留）。
+ * 口袋锚点暂不渲染（其静态模型独立设计，状态外观另行处理）。
  */
 public class WaypointBlockEntityRenderer implements BlockEntityRenderer<WaypointBlockEntity> {
 
-    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
-    private static final String MARKER = "[WaypointBER]";
+    private static final String MODEL_PATH = TeleportWaypoint.MODID + ":block/";
 
-    public static final ModelResourceLocation CRYSTAL_MODEL = ModelResourceLocation.standalone(
-            ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, "block/waypoint_crystal"));
-    public static final ModelResourceLocation RING_MODEL = ModelResourceLocation.standalone(
-            ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, "block/waypoint_ring"));
-    public static final ModelResourceLocation ORB_MODEL = ModelResourceLocation.standalone(
-            ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, "block/waypoint_orb"));
+    /** 青色组（已解锁，默认设计） */
+    public static final ModelResourceLocation CAPS_MODEL = standalone("waypoint_caps");
+    public static final ModelResourceLocation CRYSTAL_MODEL = standalone("waypoint_crystal");
+    public static final ModelResourceLocation RING_MODEL = standalone("waypoint_ring");
+    public static final ModelResourceLocation ORB_MODEL = standalone("waypoint_orb");
 
-    /** 全亮光照：动态部件自发光，不受昼夜/光照影响 */
+    /** 红色组（未解锁，红色主题贴图） */
+    public static final ModelResourceLocation CAPS_RED_MODEL = standalone("waypoint_caps_red");
+    public static final ModelResourceLocation CRYSTAL_RED_MODEL = standalone("waypoint_crystal_red");
+    public static final ModelResourceLocation RING_RED_MODEL = standalone("waypoint_ring_red");
+    public static final ModelResourceLocation ORB_RED_MODEL = standalone("waypoint_orb_red");
+
+    private static ModelResourceLocation standalone(String path) {
+        return ModelResourceLocation.standalone(ResourceLocation.parse(MODEL_PATH + path));
+    }
+
+    /** 全亮光照：发光部件自发光，不受昼夜/光照影响 */
     private static final int FULL_BRIGHT = LightTexture.FULL_BRIGHT;
 
     private final RandomSource random = RandomSource.create();
-    private int logCounter = 0;
 
     public WaypointBlockEntityRenderer(BlockEntityRendererProvider.Context context) {
-        LOGGER.info("{} BER created", MARKER);
     }
 
     @Override
@@ -65,32 +75,32 @@ public class WaypointBlockEntityRenderer implements BlockEntityRenderer<Waypoint
         float t = blockEntity.getLevel().getGameTime() + partialTick;
         var modelManager = Minecraft.getInstance().getModelManager();
 
-        // 诊断：每 100 帧输出一次渲染状态
-        if (++logCounter % 100 == 1) {
-            BakedModel missing = modelManager.getMissingModel();
-            LOGGER.info("{} render tick={} crystal={} ring={} orb={}",
-                    MARKER, blockEntity.getLevel().getGameTime(),
-                    modelManager.getModel(CRYSTAL_MODEL) != missing,
-                    modelManager.getModel(RING_MODEL) != missing,
-                    modelManager.getModel(ORB_MODEL) != missing);
-        }
+        // 状态外观（per-player）：已解锁 → 青色组；未解锁 → 红色组
+        boolean activated = ClientWaypointState.isActivated(blockEntity.getExistingUid());
+        var caps = modelManager.getModel(activated ? CAPS_MODEL : CAPS_RED_MODEL);
+        var crystal = modelManager.getModel(activated ? CRYSTAL_MODEL : CRYSTAL_RED_MODEL);
+        var ring = modelManager.getModel(activated ? RING_MODEL : RING_RED_MODEL);
+        var orb = modelManager.getModel(activated ? ORB_MODEL : ORB_RED_MODEL);
 
-        // 1) 晶核：绕方块中心 Y 轴自转（360° / 12 秒）
-        renderBakedModel(pose, buffer, modelManager.getModel(CRYSTAL_MODEL), p -> {
+        // 1) 柱顶水晶：静止
+        renderBakedModel(pose, buffer, caps, p -> { });
+
+        // 2) 晶核：绕方块中心 Y 轴自转（360° / 12 秒）
+        renderBakedModel(pose, buffer, crystal, p -> {
             p.translate(0.5, 0.5, 0.5);
             p.mulPose(Axis.YP.rotationDegrees((t * 1.5F) % 360.0F));
             p.translate(-0.5, -0.5, -0.5);
         });
 
-        // 2) 能量环：反向慢转（360° / 24 秒）+ 上下浮动
-        renderBakedModel(pose, buffer, modelManager.getModel(RING_MODEL), p -> {
+        // 3) 能量环：反向慢转（360° / 24 秒）+ 上下浮动
+        renderBakedModel(pose, buffer, ring, p -> {
             p.translate(0.5, 0.5 + (float) Math.sin(t * 0.1) * 0.0625F, 0.5);
             p.mulPose(Axis.YP.rotationDegrees((-t * 0.75F) % 360.0F));
             p.translate(-0.5, -0.5, -0.5);
         });
 
-        // 3) 核心光球：上下浮动 + 呼吸式脉冲缩放
-        renderBakedModel(pose, buffer, modelManager.getModel(ORB_MODEL), p -> {
+        // 4) 核心光球：上下浮动 + 呼吸式脉冲缩放
+        renderBakedModel(pose, buffer, orb, p -> {
             p.translate(0.5, 0.5 + (float) Math.sin(t * 0.15) * 0.125F, 0.5);
             float scale = 1.0F + (float) Math.sin(t * 0.2) * 0.08F;
             p.scale(scale, scale, scale);
@@ -101,7 +111,7 @@ public class WaypointBlockEntityRenderer implements BlockEntityRenderer<Waypoint
     /**
      * 以全亮光照渲染一个烘焙模型，transform 用于施加动画变换。
      * 注意：必须同时渲染 culled 面（有 cullface）与 unculled 面（无 cullface，
-     * 通过 direction == null 查询）——动态模型的所有面都没有 cullface。
+     * 通过 direction == null 查询）——本模型的面均无 cullface。
      */
     private void renderBakedModel(PoseStack pose, MultiBufferSource buffer, BakedModel model,
                                   Consumer<PoseStack> transform) {

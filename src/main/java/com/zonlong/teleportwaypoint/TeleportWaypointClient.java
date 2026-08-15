@@ -35,19 +35,20 @@ public class TeleportWaypointClient {
         event.register(ModMenus.WAYPOINT_LIST.get(), WaypointListScreen::new);
     }
 
-    /** 注册传送锚点方块实体渲染器（动态层：晶核旋转 / 能量环浮动 / 光球脉冲） */
+    /** 注册传送锚点方块实体渲染器（发光部件：柱顶水晶/晶核/能量环/光球） */
     static void onRegisterEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(ModBlockEntities.WAYPOINT.get(), WaypointBlockEntityRenderer::new);
-        org.slf4j.LoggerFactory.getLogger("teleportwaypoint")
-                .info("[WaypointBER] registered block entity renderer for {}", ModBlockEntities.WAYPOINT.get());
     }
 
-    /** 注册动态层附加模型，供 BER 烘焙使用 */
+    /** 注册发光部件附加模型（青色组 + 红色组），供 BER 烘焙使用 */
     static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event) {
+        event.register(WaypointBlockEntityRenderer.CAPS_MODEL);
         event.register(WaypointBlockEntityRenderer.CRYSTAL_MODEL);
         event.register(WaypointBlockEntityRenderer.RING_MODEL);
         event.register(WaypointBlockEntityRenderer.ORB_MODEL);
-        org.slf4j.LoggerFactory.getLogger("teleportwaypoint")
-                .info("[WaypointBER] registered additional models: crystal, ring, orb");
+        event.register(WaypointBlockEntityRenderer.CAPS_RED_MODEL);
+        event.register(WaypointBlockEntityRenderer.CRYSTAL_RED_MODEL);
+        event.register(WaypointBlockEntityRenderer.RING_RED_MODEL);
+        event.register(WaypointBlockEntityRenderer.ORB_RED_MODEL);
     }
 }
