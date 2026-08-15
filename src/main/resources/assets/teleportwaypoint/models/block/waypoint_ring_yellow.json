@@ -1,0 +1,286 @@
+{
+  "credit": "Made with Blockbench",
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "teleportwaypoint:block/waypoint_ring_yellow",
+    "waypoint_ring_yellow": "teleportwaypoint:block/waypoint_ring_yellow"
+  },
+  "elements": [
+    {
+      "from": [
+        3.5,
+        8.5,
+        3
+      ],
+      "to": [
+        12.5,
+        9.5,
+        4
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            3.5,
+            7,
+            12.5,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "down": {
+          "uv": [
+            3.5,
+            7,
+            12.5,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "north": {
+          "uv": [
+            3.5,
+            7,
+            12.5,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "south": {
+          "uv": [
+            3.5,
+            7,
+            12.5,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "west": {
+          "uv": [
+            12,
+            7,
+            13,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "east": {
+          "uv": [
+            12,
+            7,
+            13,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        }
+      },
+      "shade": false
+    },
+    {
+      "from": [
+        3.5,
+        8.5,
+        12
+      ],
+      "to": [
+        12.5,
+        9.5,
+        13
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            3.5,
+            7,
+            12.5,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "down": {
+          "uv": [
+            3.5,
+            7,
+            12.5,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "north": {
+          "uv": [
+            3.5,
+            7,
+            12.5,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "south": {
+          "uv": [
+            3.5,
+            7,
+            12.5,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "west": {
+          "uv": [
+            12,
+            7,
+            13,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "east": {
+          "uv": [
+            12,
+            7,
+            13,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        }
+      },
+      "shade": false
+    },
+    {
+      "from": [
+        3,
+        8.5,
+        3.5
+      ],
+      "to": [
+        4,
+        9.5,
+        12.5
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            7,
+            3.5,
+            9,
+            12.5
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "down": {
+          "uv": [
+            7,
+            3.5,
+            9,
+            12.5
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "west": {
+          "uv": [
+            7,
+            3.5,
+            9,
+            12.5
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "east": {
+          "uv": [
+            7,
+            3.5,
+            9,
+            12.5
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "north": {
+          "uv": [
+            12,
+            7,
+            13,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "south": {
+          "uv": [
+            12,
+            7,
+            13,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        }
+      },
+      "shade": false
+    },
+    {
+      "from": [
+        12,
+        8.5,
+        3.5
+      ],
+      "to": [
+        13,
+        9.5,
+        12.5
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            7,
+            3.5,
+            9,
+            12.5
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "down": {
+          "uv": [
+            7,
+            3.5,
+            9,
+            12.5
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "east": {
+          "uv": [
+            7,
+            3.5,
+            9,
+            12.5
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "west": {
+          "uv": [
+            7,
+            3.5,
+            9,
+            12.5
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "north": {
+          "uv": [
+            12,
+            7,
+            13,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        },
+        "south": {
+          "uv": [
+            12,
+            7,
+            13,
+            9
+          ],
+          "texture": "#waypoint_ring_yellow"
+        }
+      },
+      "shade": false
+    }
+  ]
+}

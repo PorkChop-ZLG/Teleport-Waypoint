@@ -96,11 +96,13 @@ function capsElement(from, texKey) {
   return { from: [x1, y1, z1], to: [x2, y2, z2], faces, shade: false };
 }
 
-/* ---- 2) 纯色贴图生成 ---- */
+/* ---- 2) 纯色贴图生成（青/红/绿/黄） ---- */
 mkdirSync(TEXTURES, { recursive: true });
 const SOLID_COLORS = {
-  'waypoint_caps.png': [111, 228, 247],        // #6fe4f7 亮青
-  'waypoint_caps_red.png': [250, 110, 90],     // #fa6e5a 亮红
+  'waypoint_caps.png': [111, 228, 247],          // #6fe4f7 亮青
+  'waypoint_caps_red.png': [250, 110, 90],       // #fa6e5a 亮红
+  'waypoint_caps_green.png': [159, 245, 168],    // #9ff5a8 淡绿
+  'waypoint_caps_yellow.png': [247, 242, 160],   // #f7f2a0 淡黄
 };
 const pngs = {};
 for (const [name, color] of Object.entries(SOLID_COLORS)) {
@@ -110,9 +112,15 @@ for (const [name, color] of Object.entries(SOLID_COLORS)) {
   console.log(`✅ 纯色贴图 ${name}（rgb ${color.join(',')}）`);
 }
 
-/* ---- 3) caps 模型生成（引用纯色贴图） ---- */
+/* ---- 3) caps 模型生成（引用纯色贴图，4 色调） ---- */
+const CAPS_TONES = [
+  ['', 'waypoint_caps'],
+  ['_red', 'waypoint_caps_red'],
+  ['_green', 'waypoint_caps_green'],
+  ['_yellow', 'waypoint_caps_yellow'],
+];
 for (const [pos, from] of Object.entries(CAPS)) {
-  for (const [suffix, texKey] of [['', 'waypoint_caps'], ['_red', 'waypoint_caps_red']]) {
+  for (const [suffix, texKey] of CAPS_TONES) {
     const model = {
       credit: 'Made with Blockbench',
       ambientocclusion: false,
@@ -124,11 +132,15 @@ for (const [pos, from] of Object.entries(CAPS)) {
     };
     write(`waypoint_caps_${pos}${suffix}.json`, model);
   }
-  console.log(`✅ waypoint_caps_${pos}.json + _red 生成（${JSON.stringify(from)}，纯色贴图）`);
+  console.log(`✅ waypoint_caps_${pos}.json ×4 色调生成（${JSON.stringify(from)}，纯色贴图）`);
 }
 
-/* ---- 4) 核心光球上移 1 格（幂等：已是 14.25 则跳过） ---- */
-for (const f of ['waypoint_orb.json', 'waypoint_orb_red.json']) {
+/* ---- 4) 核心光球上移 1 格（幂等：已是 14.25 则跳过；含全部色调变体） ---- */
+for (const f of ['waypoint_orb.json', 'waypoint_orb_red.json', 'waypoint_orb_green.json', 'waypoint_orb_yellow.json']) {
+  if (!existsSync(join(MODELS, f))) {
+    console.log(`↪ ${f} 不存在，跳过（由变体生成器产出）`);
+    continue;
+  }
   const m = read(f);
   const el = m.elements[0];
   if (el.from[1] === 14.25 && el.to[1] === 15.75) {
@@ -184,21 +196,21 @@ for (const [name, color] of Object.entries(SOLID_COLORS)) {
   check(allSame, `${name}: 应为纯色（无渐变）`);
   check(first.every((v, i) => Math.abs(v - color[i]) <= 1), `${name}: 色值应为 ${color.join(',')}，实际 ${first.join(',')}`);
 }
-// caps 模型：y12-14、6 面、纯色贴图引用
+// caps 模型：y12-14、6 面、纯色贴图引用（4 色调）
 for (const [pos] of Object.entries(CAPS)) {
-  for (const suffix of ['', '_red']) {
+  for (const [suffix, texKey] of CAPS_TONES) {
     const m = read(`waypoint_caps_${pos}${suffix}.json`);
     const el = m.elements[0];
     check(el.from[1] === 12 && el.to[1] === 14, `caps_${pos}${suffix}: 应悬浮 y12-14`);
     check(Object.keys(el.faces).length === 6, `caps_${pos}${suffix}: 应有 6 面`);
-    const texKey = suffix === '' ? 'waypoint_caps' : 'waypoint_caps_red';
     for (const fc of Object.values(el.faces)) {
       check(fc.texture === `#${texKey}`, `caps_${pos}${suffix}: 应引用纯色贴图 ${texKey}`);
     }
   }
 }
-// orb 上移 + 不穿模数学断言
-for (const f of ['waypoint_orb.json', 'waypoint_orb_red.json']) {
+// orb 上移 + 不穿模数学断言（含全部色调变体）
+for (const f of ['waypoint_orb.json', 'waypoint_orb_red.json', 'waypoint_orb_green.json', 'waypoint_orb_yellow.json']) {
+  if (!existsSync(join(MODELS, f))) continue;
   const m = read(f);
   const el = m.elements[0];
   check(el.from[1] === 14.25 && el.to[1] === 15.75, `${f}: 应上移至 y14.25-15.75`);

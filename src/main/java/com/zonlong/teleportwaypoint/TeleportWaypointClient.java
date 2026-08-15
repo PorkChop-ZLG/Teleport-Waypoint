@@ -41,12 +41,18 @@ public class TeleportWaypointClient {
         event.registerBlockEntityRenderer(ModBlockEntities.WAYPOINT.get(), WaypointBlockEntityRenderer::new);
     }
 
-    /** 注册发光部件附加模型（青色组 + 红色组），供 BER 烘焙使用 */
+    /** 注册发光部件附加模型（青/红/绿/黄配色组），供 BER 烘焙使用 */
     static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event) {
         for (ModelResourceLocation model : WaypointBlockEntityRenderer.CAPS_MODELS) {
             event.register(model);
         }
         for (ModelResourceLocation model : WaypointBlockEntityRenderer.CAPS_RED_MODELS) {
+            event.register(model);
+        }
+        for (ModelResourceLocation model : WaypointBlockEntityRenderer.CAPS_GREEN_MODELS) {
+            event.register(model);
+        }
+        for (ModelResourceLocation model : WaypointBlockEntityRenderer.CAPS_YELLOW_MODELS) {
             event.register(model);
         }
         event.register(WaypointBlockEntityRenderer.CRYSTAL_MODEL);
@@ -55,5 +61,11 @@ public class TeleportWaypointClient {
         event.register(WaypointBlockEntityRenderer.CRYSTAL_RED_MODEL);
         event.register(WaypointBlockEntityRenderer.RING_RED_MODEL);
         event.register(WaypointBlockEntityRenderer.ORB_RED_MODEL);
+        event.register(WaypointBlockEntityRenderer.CRYSTAL_GREEN_MODEL);
+        event.register(WaypointBlockEntityRenderer.RING_GREEN_MODEL);
+        event.register(WaypointBlockEntityRenderer.ORB_GREEN_MODEL);
+        event.register(WaypointBlockEntityRenderer.CRYSTAL_YELLOW_MODEL);
+        event.register(WaypointBlockEntityRenderer.RING_YELLOW_MODEL);
+        event.register(WaypointBlockEntityRenderer.ORB_YELLOW_MODEL);
     }
 }

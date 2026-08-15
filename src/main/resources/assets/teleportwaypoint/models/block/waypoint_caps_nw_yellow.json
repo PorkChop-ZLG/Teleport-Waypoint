@@ -1,0 +1,79 @@
+{
+  "credit": "Made with Blockbench",
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "teleportwaypoint:block/waypoint_caps_yellow",
+    "waypoint_caps_yellow": "teleportwaypoint:block/waypoint_caps_yellow"
+  },
+  "elements": [
+    {
+      "from": [
+        1,
+        12,
+        1
+      ],
+      "to": [
+        3,
+        14,
+        3
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_caps_yellow"
+        },
+        "up": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_caps_yellow"
+        },
+        "north": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_caps_yellow"
+        },
+        "south": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_caps_yellow"
+        },
+        "west": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_caps_yellow"
+        },
+        "east": {
+          "uv": [
+            7,
+            7,
+            9,
+            9
+          ],
+          "texture": "#waypoint_caps_yellow"
+        }
+      },
+      "shade": false
+    }
+  ]
+}
