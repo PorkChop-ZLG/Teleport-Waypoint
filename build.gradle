@@ -29,6 +29,11 @@ sourceSets.main.resources {
 
 repositories {
     // Add here additional repositories if required by some of the dependencies below.
+    maven {
+        // CurseForge maven for optional Xaero's map mods (https://www.cursemaven.com)
+        name = 'CurseMaven'
+        url = 'https://www.cursemaven.com'
+    }
 }
 
 base {
@@ -133,6 +138,10 @@ dependencies {
 
     // Example project dependency using a sister or child project:
     // implementation project(":myproject")
+
+    // Optional Xaero's map mods (CurseForge maven). Used for the map integration.
+    implementation "curse.maven:xaeros-minimap-263420:7412188"
+    implementation "curse.maven:xaeros-world-map-317780:7416972"
 
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
