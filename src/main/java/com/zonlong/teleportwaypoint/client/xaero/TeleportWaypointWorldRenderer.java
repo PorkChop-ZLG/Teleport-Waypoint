@@ -45,10 +45,7 @@ public class TeleportWaypointWorldRenderer
             MultiBufferSource.BufferSource bufferSource,
             MultiTextureRenderTypeRendererProvider rendererProvider,
             boolean hovered) {
-        TeleportWaypointContext context = getContext();
-        context.mapDimension = renderInfo.mapDimension;
-        context.showWaypoints = XaeroIntegration.showWaypoints();
-        context.showNames = XaeroIntegration.showWaypointNames();
+        getContext().mapDimension = renderInfo.mapDimension;
     }
 
     @Override

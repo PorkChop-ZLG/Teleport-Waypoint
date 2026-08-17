@@ -47,29 +47,6 @@ public final class ClientWaypointState {
         revision++;
     }
 
-    public static void upsertWaypoint(WaypointSyncInfo info) {
-        Map<UUID, ClientWaypointInfo> map = new HashMap<>(waypoints);
-        map.put(info.uid(), new ClientWaypointInfo(
-                info.uid(),
-                ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, info.dimension()),
-                info.pos(),
-                info.pocket(),
-                info.name()));
-        waypoints = Map.copyOf(map);
-        revision++;
-    }
-
-    public static void removeWaypoint(UUID uid) {
-        if (!waypoints.containsKey(uid)) {
-            return;
-        }
-        Map<UUID, ClientWaypointInfo> map = new HashMap<>(waypoints);
-        map.remove(uid);
-        waypoints = Map.copyOf(map);
-        removeActivated(uid);
-        revision++;
-    }
-
     public static List<ClientWaypointInfo> getWaypoints() {
         return List.copyOf(waypoints.values());
     }

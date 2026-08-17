@@ -31,6 +31,7 @@ bin/
 
 ### AI/agent workspace files (not part of the mod) ###
 memory/
+.dsh-vision-router/
 
 ### Mac OS ###
 .DS_Store

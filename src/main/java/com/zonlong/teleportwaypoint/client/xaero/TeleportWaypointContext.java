@@ -9,6 +9,4 @@ import net.minecraft.world.level.Level;
  */
 public class TeleportWaypointContext {
     public ResourceKey<Level> mapDimension;
-    public boolean showWaypoints = true;
-    public boolean showNames = true;
 }

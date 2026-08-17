@@ -40,10 +40,12 @@ public class WaypointRegistryData extends SavedData {
         setDirty();
     }
 
-    public void remove(UUID uid) {
+    public boolean remove(UUID uid) {
         if (waypoints.remove(uid) != null) {
             setDirty();
+            return true;
         }
+        return false;
     }
 
     public boolean removeIfAt(UUID uid, ResourceKey<Level> dimension, BlockPos pos) {

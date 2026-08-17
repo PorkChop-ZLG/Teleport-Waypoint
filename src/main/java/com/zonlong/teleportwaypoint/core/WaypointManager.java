@@ -105,9 +105,11 @@ public class WaypointManager {
     }
 
     public static void removeWaypoint(MinecraftServer server, UUID uid) {
-        WaypointRegistryData.get(server).remove(uid);
+        boolean removed = WaypointRegistryData.get(server).remove(uid);
         Set<UUID> affectedPlayers = PlayerWaypointData.get(server).deactivateAll(uid);
-        broadcastAll(server);
+        if (removed) {
+            broadcastAll(server);
+        }
         for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
             if (affectedPlayers.contains(onlinePlayer.getUUID())) {
                 syncTo(onlinePlayer);
