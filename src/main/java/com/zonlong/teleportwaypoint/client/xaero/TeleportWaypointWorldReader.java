@@ -18,9 +18,9 @@ import xaero.map.gui.dropdown.rightclick.RightClickOption;
 public class TeleportWaypointWorldReader
         extends ElementReader<TeleportWaypointElement, TeleportWaypointContext, TeleportWaypointWorldRenderer> {
 
-    private static final int ICON_HALF = 7;
-    private static final int BOX_TOP = -12;
-    private static final int BOX_BOTTOM = 12;
+    private static final int ICON_HALF = 16;
+    private static final int BOX_TOP = -16;
+    private static final int BOX_BOTTOM = 16;
 
     @Override
     public boolean isHidden(TeleportWaypointElement element, TeleportWaypointContext context) {
@@ -89,7 +89,8 @@ public class TeleportWaypointWorldReader
 
     @Override
     public String getMenuName(TeleportWaypointElement element) {
-        return element.info().displayName().getString();
+        return Component.translatable("gui.teleportwaypoint.map_menu_name",
+                element.info().displayName().getString()).getString();
     }
 
     @Override
@@ -115,34 +116,36 @@ public class TeleportWaypointWorldReader
     @Override
     public ArrayList<RightClickOption> getRightClickOptions(TeleportWaypointElement element, IRightClickableElement target) {
         ArrayList<RightClickOption> options = new ArrayList<>();
-        if (element.activated()) {
-            options.add(new TeleportRightClickOption(
-                    element.uid(),
-                    "gui.teleportwaypoint.map_teleport",
-                    0,
-                    target));
-        }
+
+        String coords = Component.translatable("gui.teleportwaypoint.map_coords",
+                element.getX(), element.getY(), element.getZ()).getString();
+        options.add(new TeleportWaypointInfoOption(coords, options.size(), target));
+
+        TeleportRightClickOption teleport = new TeleportRightClickOption(
+                element.uid(),
+                "gui.teleportwaypoint.map_teleport",
+                options.size(),
+                target);
+        teleport.setActive(element.activated());
+        options.add(teleport);
+
         return options;
     }
 
     @Override
     public boolean isRightClickValid(TeleportWaypointElement element) {
-        return element.activated();
+        return true;
     }
 
     @Override
     public Tooltip getTooltip(TeleportWaypointElement element, TeleportWaypointContext context, boolean hovered) {
-        String text = element.info().displayName().getString()
-                + "\nX: " + element.getX()
-                + ", Y: " + element.getY()
-                + ", Z: " + element.getZ();
-        return new Tooltip(Component.literal(text));
+        return new Tooltip(element.info().displayName());
     }
 
     private static int colorFor(TeleportWaypointElement element) {
-        if (!element.activated()) {
-            return 0xFF9E9E9E;
+        if (element.pocket()) {
+            return element.activated() ? 0xFF66BB6A : 0xFFFDD835;
         }
-        return element.pocket() ? 0xFF66BB6A : 0xFF26C6DA;
+        return element.activated() ? 0xFF26C6DA : 0xFFE53935;
     }
 }

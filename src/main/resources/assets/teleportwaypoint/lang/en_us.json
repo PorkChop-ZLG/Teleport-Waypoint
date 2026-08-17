@@ -17,6 +17,8 @@
   "gui.teleportwaypoint.delete_confirm_desc": "This only removes the waypoint's activation from your list; it does not destroy the block.",
   "gui.teleportwaypoint.confirm": "Confirm",
   "gui.teleportwaypoint.cancel": "Cancel",
+  "gui.teleportwaypoint.map_menu_name": "Name: %s",
+  "gui.teleportwaypoint.map_coords": "Coords: %s, %s, %s",
   "gui.teleportwaypoint.map_teleport": "Teleport",
 
   "chat.teleportwaypoint.waypoint_activated": "Waypoint activated: %s",

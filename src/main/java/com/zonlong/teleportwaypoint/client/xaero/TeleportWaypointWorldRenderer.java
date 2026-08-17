@@ -1,8 +1,11 @@
 package com.zonlong.teleportwaypoint.client.xaero;
 
+import com.zonlong.teleportwaypoint.TeleportWaypoint;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.resources.ResourceLocation;
 
 import xaero.map.element.render.ElementRenderInfo;
 import xaero.map.element.render.ElementRenderLocation;
@@ -12,11 +15,23 @@ import xaero.map.element.render.ElementRenderer;
 import xaero.map.graphics.renderer.multitexture.MultiTextureRenderTypeRendererProvider;
 
 /**
- * Renders teleport waypoint markers on Xaero's world map. Activated waypoints are
- * colored, unactivated ones are gray; names are drawn when enabled.
+ * Renders teleport waypoint markers on Xaero's world map using dedicated crystal
+ * icons: red for inactive regular waypoints, cyan for active regular waypoints,
+ * yellow for inactive pocket waypoints and green for active pocket waypoints.
+ * Names are drawn when enabled.
  */
 public class TeleportWaypointWorldRenderer
         extends ElementRenderer<TeleportWaypointElement, TeleportWaypointContext, TeleportWaypointWorldRenderer> {
+
+    private static final int ICON_SIZE = 32;
+    private static final ResourceLocation WAYPOINT_ACTIVE = ResourceLocation.fromNamespaceAndPath(
+            TeleportWaypoint.MODID, "textures/gui/waypoint_active.png");
+    private static final ResourceLocation WAYPOINT_INACTIVE = ResourceLocation.fromNamespaceAndPath(
+            TeleportWaypoint.MODID, "textures/gui/waypoint_inactive.png");
+    private static final ResourceLocation POCKET_WAYPOINT_ACTIVE = ResourceLocation.fromNamespaceAndPath(
+            TeleportWaypoint.MODID, "textures/gui/pocket_waypoint_active.png");
+    private static final ResourceLocation POCKET_WAYPOINT_INACTIVE = ResourceLocation.fromNamespaceAndPath(
+            TeleportWaypoint.MODID, "textures/gui/pocket_waypoint_inactive.png");
 
     public TeleportWaypointWorldRenderer(
             TeleportWaypointContext context,
@@ -70,21 +85,20 @@ public class TeleportWaypointWorldRenderer
             GuiGraphics guiGraphics,
             MultiBufferSource.BufferSource bufferSource,
             MultiTextureRenderTypeRendererProvider rendererProvider) {
-        int color = element.activated()
-                ? (element.pocket() ? 0xFF66BB6A : 0xFF26C6DA)
-                : 0xFF9E9E9E;
-
-        guiGraphics.fill(-4, -4, 4, 4, color);
-        guiGraphics.fill(-5, -5, -4, 5, 0xFF000000);
-        guiGraphics.fill(4, -5, 5, 5, 0xFF000000);
-        guiGraphics.fill(-4, -5, 4, -4, 0xFF000000);
-        guiGraphics.fill(-4, 4, 4, 5, 0xFF000000);
+        ResourceLocation texture;
+        if (!element.activated()) {
+            texture = element.pocket() ? POCKET_WAYPOINT_INACTIVE : WAYPOINT_INACTIVE;
+        } else {
+            texture = element.pocket() ? POCKET_WAYPOINT_ACTIVE : WAYPOINT_ACTIVE;
+        }
+        int half = ICON_SIZE / 2;
+        guiGraphics.blit(texture, -half, -half, 0.0F, 0.0F, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
 
         if (getContext().showNames) {
             guiGraphics.drawString(
                     Minecraft.getInstance().font,
                     element.info().displayName(),
-                    7,
+                    half + 2,
                     -4,
                     0xFFFFFFFF,
                     false);

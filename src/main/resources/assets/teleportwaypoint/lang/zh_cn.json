@@ -17,6 +17,8 @@
   "gui.teleportwaypoint.delete_confirm_desc": "只会取消该锚点的激活状态，从传送列表中移除，不会删除锚点方块本身。",
   "gui.teleportwaypoint.confirm": "确认",
   "gui.teleportwaypoint.cancel": "取消",
+  "gui.teleportwaypoint.map_menu_name": "名字：%s",
+  "gui.teleportwaypoint.map_coords": "坐标：%s,%s,%s",
   "gui.teleportwaypoint.map_teleport": "传送",
 
   "chat.teleportwaypoint.waypoint_activated": "已激活传送锚点：%s",
