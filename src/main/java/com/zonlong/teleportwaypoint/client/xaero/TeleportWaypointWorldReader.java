@@ -89,12 +89,12 @@ public class TeleportWaypointWorldReader
 
     @Override
     public String getMenuName(TeleportWaypointElement element) {
-        return element.name();
+        return element.info().displayName().getString();
     }
 
     @Override
     public String getFilterName(TeleportWaypointElement element) {
-        return element.name();
+        return element.info().displayName().getString();
     }
 
     @Override
@@ -132,7 +132,7 @@ public class TeleportWaypointWorldReader
 
     @Override
     public Tooltip getTooltip(TeleportWaypointElement element, TeleportWaypointContext context, boolean hovered) {
-        String text = element.name()
+        String text = element.info().displayName().getString()
                 + "\nX: " + element.getX()
                 + ", Y: " + element.getY()
                 + ", Z: " + element.getZ();

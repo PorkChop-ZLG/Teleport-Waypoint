@@ -3,7 +3,6 @@ package com.zonlong.teleportwaypoint.client.xaero;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.network.chat.Component;
 
 import xaero.map.element.render.ElementRenderInfo;
 import xaero.map.element.render.ElementRenderLocation;
@@ -84,7 +83,7 @@ public class TeleportWaypointWorldRenderer
         if (getContext().showNames) {
             guiGraphics.drawString(
                     Minecraft.getInstance().font,
-                    Component.literal(element.name()),
+                    element.info().displayName(),
                     7,
                     -4,
                     0xFFFFFFFF,

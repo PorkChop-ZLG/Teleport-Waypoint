@@ -3,6 +3,7 @@ package com.zonlong.teleportwaypoint.client;
 import java.util.UUID;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
@@ -16,4 +17,11 @@ public record ClientWaypointInfo(
         boolean pocket,
         String name
 ) {
+    /**
+     * Returns the display name: pocket waypoints use their literal name, regular
+     * waypoints use the translation key based on their raw id.
+     */
+    public Component displayName() {
+        return pocket ? Component.literal(name) : Component.translatable("teleportwaypoint.waypoint." + name);
+    }
 }

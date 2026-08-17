@@ -117,7 +117,53 @@ neoForge {
 // a dependency that will be present for runtime testing but that is
 // "optional", meaning it will not be pulled by dependents of this mod.
 configurations {
+    xaeroMods
     runtimeClasspath.extendsFrom localRuntime
+}
+
+// Xaero ships its shared library inside META-INF/jarjar as a nested jar.
+// Extract that nested jar so it can be used as a compileOnly dependency without
+// hard-coding an absolute path on the developer machine.
+abstract class ExtractXaeroLibTask extends DefaultTask {
+    @InputFiles
+    abstract ConfigurableFileCollection getModJars()
+
+    @OutputFile
+    abstract RegularFileProperty getOutputFile()
+
+    @TaskAction
+    void extract() {
+        def found = false
+        modJars.each { file ->
+            if (found) {
+                return
+            }
+            def zip = new java.util.zip.ZipFile(file)
+            try {
+                def entry = zip.entries().find {
+                    it.name.startsWith('META-INF/jarjar/xaerolib-') && it.name.endsWith('.jar')
+                }
+                if (entry != null) {
+                    def out = outputFile.get().asFile
+                    out.parentFile.mkdirs()
+                    out.withOutputStream { os ->
+                        zip.getInputStream(entry).transferTo(os)
+                    }
+                    found = true
+                }
+            } finally {
+                zip.close()
+            }
+        }
+        if (!found) {
+            throw new GradleException('xaerolib jar not found inside Xaero mod dependencies')
+        }
+    }
+}
+
+def extractXaeroLib = tasks.register('extractXaeroLib', ExtractXaeroLibTask) {
+    modJars.from(configurations.xaeroMods)
+    outputFile.set(layout.buildDirectory.file('xaerolib/xaerolib.jar'))
 }
 
 dependencies {
@@ -142,10 +188,12 @@ dependencies {
     // Optional Xaero's map mods (CurseForge maven). Used for the map integration.
     // compileOnly keeps the mod runnable without Xaero; localRuntime keeps them
     // available in the development client for testing.
+    xaeroMods "curse.maven:xaeros-minimap-263420:7412188"
+    xaeroMods "curse.maven:xaeros-world-map-317780:7416972"
     compileOnly "curse.maven:xaeros-minimap-263420:7412188"
     compileOnly "curse.maven:xaeros-world-map-317780:7416972"
     // Xaero's lib jar is bundled inside the mod jars via jarjar; expose it for compilation.
-    compileOnly files('D:/Minecraft/Xaero-Minimap/META-INF/jarjar/xaerolib-neoforge-1.21.1-1.0.45.jar')
+    compileOnly files(extractXaeroLib)
     localRuntime "curse.maven:xaeros-minimap-263420:7412188"
     localRuntime "curse.maven:xaeros-world-map-317780:7416972"
 

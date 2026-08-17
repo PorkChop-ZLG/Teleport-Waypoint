@@ -19,6 +19,7 @@ import net.minecraft.resources.ResourceLocation;
 import xaero.common.minimap.waypoints.Waypoint;
 import xaero.hud.minimap.BuiltInHudModules;
 import xaero.hud.minimap.module.MinimapSession;
+import xaero.hud.minimap.waypoint.WaypointColor;
 import xaero.hud.minimap.world.MinimapWorldManager;
 
 /**
@@ -31,6 +32,8 @@ public final class XaeroMinimapIntegration {
     private static final Map<UUID, Integer> UID_TO_ID = new HashMap<>();
     private static final Map<ResourceLocation, Set<Integer>> OWNED = new HashMap<>();
     private static int lastRevision = -1;
+    private static boolean lastShowWaypoints = true;
+    private static boolean lastShowWaypointNames = true;
     private static boolean initialized;
 
     private XaeroMinimapIntegration() {
@@ -46,19 +49,27 @@ public final class XaeroMinimapIntegration {
             return;
         }
         int revision = ClientWaypointState.getRevision();
-        if (revision == lastRevision) {
+        boolean showWaypoints = XaeroIntegration.showWaypoints();
+        boolean showWaypointNames = XaeroIntegration.showWaypointNames();
+        if (revision == lastRevision
+                && showWaypoints == lastShowWaypoints
+                && showWaypointNames == lastShowWaypointNames) {
             return;
         }
-        lastRevision = revision;
 
         MinimapSession session = BuiltInHudModules.MINIMAP.getCurrentSession();
         if (session == null) {
+            // Session not ready yet: do not consume the revision/config state.
             return;
         }
         MinimapWorldManager manager = session.getWorldManager();
 
+        lastRevision = revision;
+        lastShowWaypoints = showWaypoints;
+        lastShowWaypointNames = showWaypointNames;
+
         Map<ResourceLocation, List<ClientWaypointInfo>> desired = new HashMap<>();
-        if (XaeroIntegration.showWaypoints()) {
+        if (showWaypoints) {
             for (ClientWaypointInfo info : ClientWaypointState.getWaypoints()) {
                 desired.computeIfAbsent(info.dimension().location(), k -> new ArrayList<>()).add(info);
             }
@@ -116,11 +127,13 @@ public final class XaeroMinimapIntegration {
                 owned.add(id);
 
                 boolean activated = ClientWaypointState.isActivated(info.uid());
-                int color = activated
-                        ? (info.pocket() ? 0xFF66BB6A : 0xFF26C6DA)
-                        : 0xFF9E9E9E;
+                WaypointColor color = activated
+                        ? (info.pocket() ? WaypointColor.GREEN : WaypointColor.AQUA)
+                        : WaypointColor.GRAY;
                 String symbol = info.pocket() ? "P" : "W";
-                String displayName = XaeroIntegration.showWaypointNames() ? info.name() : "";
+                String displayName = XaeroIntegration.showWaypointNames()
+                        ? info.displayName().getString()
+                        : "";
 
                 Waypoint waypoint = new Waypoint(
                         info.pos().getX(),

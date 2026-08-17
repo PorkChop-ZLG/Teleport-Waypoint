@@ -30,10 +30,14 @@ public final class XaeroIntegration {
     }
 
     public static void tick() {
-        tryRegisterXaeroConfig();
-        registerWorldMap();
-        registerMinimap();
-        XaeroMinimapIntegration.sync();
+        if (ModList.get().isLoaded("xaeroworldmap")) {
+            tryRegisterXaeroConfig();
+            registerWorldMap();
+        }
+        if (ModList.get().isLoaded("xaerominimap")) {
+            registerMinimap();
+            XaeroMinimapIntegration.sync();
+        }
     }
 
     public static boolean showWaypoints() {
@@ -54,10 +58,11 @@ public final class XaeroIntegration {
         if (configAttempted) {
             return;
         }
-        configAttempted = true;
         if (!ModList.get().isLoaded("xaeroworldmap") || WorldMap.INSTANCE == null) {
+            // World Map not ready yet; keep trying on later ticks.
             return;
         }
+        configAttempted = true;
         try {
             ConfigOptionManager manager = WorldMap.INSTANCE.getConfigs().getConfigOptionManager();
             xaeroShowWaypoints = createBooleanOption(
