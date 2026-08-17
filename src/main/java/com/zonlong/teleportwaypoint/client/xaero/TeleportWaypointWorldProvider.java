@@ -22,9 +22,11 @@ public class TeleportWaypointWorldProvider
     @Override
     public void begin(ElementRenderLocation location, TeleportWaypointContext context) {
         List<TeleportWaypointElement> elements = new ArrayList<>();
-        if (context.showWaypoints && context.mapDimension != null) {
+        if (context.mapDimension != null) {
             for (ClientWaypointInfo info : ClientWaypointState.getWaypointsIn(context.mapDimension)) {
-                elements.add(new TeleportWaypointElement(info, ClientWaypointState.isActivated(info.uid())));
+                if (XaeroIntegration.shouldShow(info.pocket(), ClientWaypointState.isActivated(info.uid()))) {
+                    elements.add(new TeleportWaypointElement(info, ClientWaypointState.isActivated(info.uid())));
+                }
             }
         }
         iterator = elements.iterator();

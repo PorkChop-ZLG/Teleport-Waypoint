@@ -33,5 +33,16 @@
 
   "teleportwaypoint.configuration.title": "传送锚点配置",
   "teleportwaypoint.configuration.section.teleportwaypoint.common.toml": "传送锚点配置",
-  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml.title": "传送锚点配置"
+  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml.title": "传送锚点配置",
+  "teleportwaypoint.configuration.xaeroMapIntegration": "Xaero 的地图联动",
+  "teleportwaypoint.configuration.xaeroMapIntegration.showWaypoints": "显示传送锚点",
+  "teleportwaypoint.configuration.xaeroMapIntegration.showWaypoints.tooltip": "是否在 Xaero 地图上显示传送锚点。",
+  "teleportwaypoint.configuration.xaeroMapIntegration.waypoint": "传送锚点",
+  "teleportwaypoint.configuration.xaeroMapIntegration.waypoint.showInactive": "显示未激活的传送锚点",
+  "teleportwaypoint.configuration.xaeroMapIntegration.waypoint.showActive": "显示已激活的传送锚点",
+  "teleportwaypoint.configuration.xaeroMapIntegration.waypoint.range": "传送锚点显示范围",
+  "teleportwaypoint.configuration.xaeroMapIntegration.pocketWaypoint": "口袋锚点",
+  "teleportwaypoint.configuration.xaeroMapIntegration.pocketWaypoint.showInactive": "显示未激活的口袋锚点",
+  "teleportwaypoint.configuration.xaeroMapIntegration.pocketWaypoint.showActive": "显示已激活的口袋锚点",
+  "teleportwaypoint.configuration.xaeroMapIntegration.pocketWaypoint.range": "口袋锚点显示范围"
 }

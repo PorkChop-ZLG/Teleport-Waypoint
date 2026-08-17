@@ -51,7 +51,31 @@ public final class XaeroIntegration {
         if (xaeroShowWaypointNames != null && WorldMap.INSTANCE != null) {
             return WorldMap.INSTANCE.getConfigs().getClientConfigManager().getEffective(xaeroShowWaypointNames);
         }
-        return Config.SHOW_WAYPOINT_NAMES.get();
+        // The NeoForge showWaypointNames option has been removed; names default to shown
+        // unless Xaero's own config is available.
+        return true;
+    }
+
+    /**
+     * Returns whether a waypoint of the given type/state should be shown at all,
+     * based on the master showWaypoints switch and the per-type active/inactive toggles.
+     */
+    public static boolean shouldShow(boolean pocket, boolean activated) {
+        if (!showWaypoints()) {
+            return false;
+        }
+        if (pocket) {
+            return activated ? Config.SHOW_ACTIVE_POCKET_WAYPOINTS.get() : Config.SHOW_INACTIVE_POCKET_WAYPOINTS.get();
+        }
+        return activated ? Config.SHOW_ACTIVE_WAYPOINTS.get() : Config.SHOW_INACTIVE_WAYPOINTS.get();
+    }
+
+    /**
+     * Returns the configured display range in blocks for the given waypoint type.
+     * A value of 0 means no distance limit.
+     */
+    public static int getDisplayRange(boolean pocket) {
+        return pocket ? Config.POCKET_WAYPOINT_RANGE.get() : Config.WAYPOINT_RANGE.get();
     }
 
     private static void tryRegisterXaeroConfig() {

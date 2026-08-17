@@ -14,7 +14,12 @@ import com.zonlong.teleportwaypoint.client.ClientWaypointInfo;
 import com.zonlong.teleportwaypoint.client.ClientWaypointState;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 
 import xaero.common.minimap.waypoints.Waypoint;
 import xaero.hud.minimap.BuiltInHudModules;
@@ -34,6 +39,8 @@ public final class XaeroMinimapIntegration {
     private static int lastRevision = -1;
     private static boolean lastShowWaypoints = true;
     private static boolean lastShowWaypointNames = true;
+    private static ResourceKey<Level> lastPlayerDimension;
+    private static BlockPos lastPlayerPos;
     private static boolean initialized;
 
     private XaeroMinimapIntegration() {
@@ -51,9 +58,11 @@ public final class XaeroMinimapIntegration {
         int revision = ClientWaypointState.getRevision();
         boolean showWaypoints = XaeroIntegration.showWaypoints();
         boolean showWaypointNames = XaeroIntegration.showWaypointNames();
+        boolean rangeRefresh = shouldRefreshForRange();
         if (revision == lastRevision
                 && showWaypoints == lastShowWaypoints
-                && showWaypointNames == lastShowWaypointNames) {
+                && showWaypointNames == lastShowWaypointNames
+                && !rangeRefresh) {
             return;
         }
 
@@ -67,16 +76,65 @@ public final class XaeroMinimapIntegration {
         lastRevision = revision;
         lastShowWaypoints = showWaypoints;
         lastShowWaypointNames = showWaypointNames;
+        updateLastPlayerState();
 
         Map<ResourceLocation, List<ClientWaypointInfo>> desired = new HashMap<>();
         if (showWaypoints) {
+            Player player = Minecraft.getInstance().player;
             for (ClientWaypointInfo info : ClientWaypointState.getWaypoints()) {
+                if (!XaeroIntegration.shouldShow(info.pocket(), ClientWaypointState.isActivated(info.uid()))) {
+                    continue;
+                }
+                if (player != null && info.dimension().equals(player.level().dimension())) {
+                    int range = XaeroIntegration.getDisplayRange(info.pocket());
+                    if (range > 0 && distanceSq(player.blockPosition(), info.pos()) > (long) range * range) {
+                        continue;
+                    }
+                }
                 desired.computeIfAbsent(info.dimension().location(), k -> new ArrayList<>()).add(info);
             }
         }
 
         removeStale(manager, desired);
         addOrUpdate(manager, desired);
+    }
+
+    private static boolean shouldRefreshForRange() {
+        Player player = Minecraft.getInstance().player;
+        if (player == null) {
+            return false;
+        }
+        ResourceKey<Level> dimension = player.level().dimension();
+        if (!dimension.equals(lastPlayerDimension)) {
+            return true;
+        }
+        if (lastPlayerPos == null) {
+            return true;
+        }
+        boolean anyRangeEnabled = XaeroIntegration.getDisplayRange(false) > 0
+                || XaeroIntegration.getDisplayRange(true) > 0;
+        if (!anyRangeEnabled) {
+            return false;
+        }
+        return distanceSq(lastPlayerPos, player.blockPosition()) > 16L * 16L;
+    }
+
+    private static void updateLastPlayerState() {
+        Player player = Minecraft.getInstance().player;
+        if (player != null) {
+            lastPlayerDimension = player.level().dimension();
+            lastPlayerPos = player.blockPosition();
+        } else {
+            lastPlayerDimension = null;
+            lastPlayerPos = null;
+        }
+    }
+
+    private static long distanceSq(BlockPos a, BlockPos b) {
+        long dx = a.getX() - b.getX();
+        long dy = a.getY() - b.getY();
+        long dz = a.getZ() - b.getZ();
+        return dx * dx + dy * dy + dz * dz;
     }
 
     private static void removeStale(MinimapWorldManager manager,

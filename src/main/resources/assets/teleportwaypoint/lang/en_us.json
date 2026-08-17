@@ -33,5 +33,16 @@
 
   "teleportwaypoint.configuration.title": "Teleport Waypoint Configs",
   "teleportwaypoint.configuration.section.teleportwaypoint.common.toml": "Teleport Waypoint Configs",
-  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml.title": "Teleport Waypoint Configs"
+  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml.title": "Teleport Waypoint Configs",
+  "teleportwaypoint.configuration.xaeroMapIntegration": "Xaero Map Integration",
+  "teleportwaypoint.configuration.xaeroMapIntegration.showWaypoints": "Show Teleport Waypoints",
+  "teleportwaypoint.configuration.xaeroMapIntegration.showWaypoints.tooltip": "Show teleport waypoints on Xaero maps.",
+  "teleportwaypoint.configuration.xaeroMapIntegration.waypoint": "Waypoint",
+  "teleportwaypoint.configuration.xaeroMapIntegration.waypoint.showInactive": "Show Inactive Waypoints",
+  "teleportwaypoint.configuration.xaeroMapIntegration.waypoint.showActive": "Show Active Waypoints",
+  "teleportwaypoint.configuration.xaeroMapIntegration.waypoint.range": "Waypoint Display Range",
+  "teleportwaypoint.configuration.xaeroMapIntegration.pocketWaypoint": "Pocket Waypoint",
+  "teleportwaypoint.configuration.xaeroMapIntegration.pocketWaypoint.showInactive": "Show Inactive Pocket Waypoints",
+  "teleportwaypoint.configuration.xaeroMapIntegration.pocketWaypoint.showActive": "Show Active Pocket Waypoints",
+  "teleportwaypoint.configuration.xaeroMapIntegration.pocketWaypoint.range": "Pocket Waypoint Display Range"
 }
