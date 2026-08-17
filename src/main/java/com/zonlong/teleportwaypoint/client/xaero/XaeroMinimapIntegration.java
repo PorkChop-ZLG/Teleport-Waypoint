@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.zonlong.teleportwaypoint.Config;
 import com.zonlong.teleportwaypoint.client.ClientWaypointInfo;
 import com.zonlong.teleportwaypoint.client.ClientWaypointState;
 
@@ -39,6 +40,12 @@ public final class XaeroMinimapIntegration {
     private static int lastRevision = -1;
     private static boolean lastShowWaypoints = true;
     private static boolean lastShowWaypointNames = true;
+    private static boolean lastShowInactiveWaypoints = true;
+    private static boolean lastShowActiveWaypoints = true;
+    private static int lastWaypointRange = 128;
+    private static boolean lastShowInactivePocketWaypoints = true;
+    private static boolean lastShowActivePocketWaypoints = true;
+    private static int lastPocketWaypointRange = 128;
     private static ResourceKey<Level> lastPlayerDimension;
     private static BlockPos lastPlayerPos;
     private static boolean initialized;
@@ -58,11 +65,22 @@ public final class XaeroMinimapIntegration {
         int revision = ClientWaypointState.getRevision();
         boolean showWaypoints = XaeroIntegration.showWaypoints();
         boolean showWaypointNames = XaeroIntegration.showWaypointNames();
+        boolean showInactiveWaypoints = Config.SHOW_INACTIVE_WAYPOINTS.get();
+        boolean showActiveWaypoints = Config.SHOW_ACTIVE_WAYPOINTS.get();
+        int waypointRange = Config.WAYPOINT_RANGE.get();
+        boolean showInactivePocketWaypoints = Config.SHOW_INACTIVE_POCKET_WAYPOINTS.get();
+        boolean showActivePocketWaypoints = Config.SHOW_ACTIVE_POCKET_WAYPOINTS.get();
+        int pocketWaypointRange = Config.POCKET_WAYPOINT_RANGE.get();
+        boolean configChanged = showWaypoints != lastShowWaypoints
+                || showWaypointNames != lastShowWaypointNames
+                || showInactiveWaypoints != lastShowInactiveWaypoints
+                || showActiveWaypoints != lastShowActiveWaypoints
+                || waypointRange != lastWaypointRange
+                || showInactivePocketWaypoints != lastShowInactivePocketWaypoints
+                || showActivePocketWaypoints != lastShowActivePocketWaypoints
+                || pocketWaypointRange != lastPocketWaypointRange;
         boolean rangeRefresh = shouldRefreshForRange();
-        if (revision == lastRevision
-                && showWaypoints == lastShowWaypoints
-                && showWaypointNames == lastShowWaypointNames
-                && !rangeRefresh) {
+        if (revision == lastRevision && !configChanged && !rangeRefresh) {
             return;
         }
 
@@ -76,6 +94,12 @@ public final class XaeroMinimapIntegration {
         lastRevision = revision;
         lastShowWaypoints = showWaypoints;
         lastShowWaypointNames = showWaypointNames;
+        lastShowInactiveWaypoints = showInactiveWaypoints;
+        lastShowActiveWaypoints = showActiveWaypoints;
+        lastWaypointRange = waypointRange;
+        lastShowInactivePocketWaypoints = showInactivePocketWaypoints;
+        lastShowActivePocketWaypoints = showActivePocketWaypoints;
+        lastPocketWaypointRange = pocketWaypointRange;
         updateLastPlayerState();
 
         Map<ResourceLocation, List<ClientWaypointInfo>> desired = new HashMap<>();
