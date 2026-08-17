@@ -83,7 +83,7 @@ public class WaypointTeleporter {
                 player.getXRot());
 
         // Teleport sound and portal particles (like Waystones).
-        targetLevel.playSound(null, record.pos(), SoundEvents.PORTAL_TRAVEL, SoundSource.PLAYERS, 0.5f, 1f);
+        targetLevel.playSound(null, record.pos(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 0.5f, 1f);
         targetLevel.sendParticles(player, ParticleTypes.PORTAL, true,
                 record.pos().getX() + 0.5, record.pos().getY() + 1.0, record.pos().getZ() + 0.5,
                 128, 1.5, 1.5, 1.5, 0.1);

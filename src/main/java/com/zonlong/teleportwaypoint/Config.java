@@ -33,7 +33,7 @@ public class Config {
                 .define("showActive", true);
         WAYPOINT_RANGE = BUILDER
                 .comment("Maximum distance in blocks for teleport waypoints to appear. 0 disables the limit.")
-                .defineInRange("range", 128, 0, 100000);
+                .defineInRange("range", 256, 0, 100000);
         BUILDER.pop();
 
         BUILDER.push("pocketWaypoint");
@@ -45,7 +45,7 @@ public class Config {
                 .define("showActive", true);
         POCKET_WAYPOINT_RANGE = BUILDER
                 .comment("Maximum distance in blocks for pocket waypoints to appear. 0 disables the limit.")
-                .defineInRange("range", 128, 0, 100000);
+                .defineInRange("range", 256, 0, 100000);
         BUILDER.pop();
 
         BUILDER.pop();
