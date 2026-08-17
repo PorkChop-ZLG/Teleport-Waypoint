@@ -140,8 +140,14 @@ dependencies {
     // implementation project(":myproject")
 
     // Optional Xaero's map mods (CurseForge maven). Used for the map integration.
-    implementation "curse.maven:xaeros-minimap-263420:7412188"
-    implementation "curse.maven:xaeros-world-map-317780:7416972"
+    // compileOnly keeps the mod runnable without Xaero; localRuntime keeps them
+    // available in the development client for testing.
+    compileOnly "curse.maven:xaeros-minimap-263420:7412188"
+    compileOnly "curse.maven:xaeros-world-map-317780:7416972"
+    // Xaero's lib jar is bundled inside the mod jars via jarjar; expose it for compilation.
+    compileOnly files('D:/Minecraft/Xaero-Minimap/META-INF/jarjar/xaerolib-neoforge-1.21.1-1.0.45.jar')
+    localRuntime "curse.maven:xaeros-minimap-263420:7412188"
+    localRuntime "curse.maven:xaeros-world-map-317780:7416972"
 
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html

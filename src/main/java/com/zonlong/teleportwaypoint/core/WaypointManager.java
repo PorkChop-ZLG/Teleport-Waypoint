@@ -8,6 +8,8 @@ import java.util.UUID;
 import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 import com.zonlong.teleportwaypoint.network.ActivatedWaypointInfo;
 import com.zonlong.teleportwaypoint.network.SyncActivatedWaypointsPayload;
+import com.zonlong.teleportwaypoint.network.SyncAllWaypointsPayload;
+import com.zonlong.teleportwaypoint.network.WaypointSyncInfo;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -42,7 +44,14 @@ public class WaypointManager {
         } else {
             name = WaypointBlockEntity.isValidId(be.getId()) ? be.getId() : "empty";
         }
+        boolean existed = registry.get(uid)
+                .filter(record -> record.dimension().equals(serverLevel.dimension())
+                        && record.pos().equals(be.getBlockPos()))
+                .isPresent();
         registry.put(new WaypointRecord(uid, serverLevel.dimension(), be.getBlockPos(), be.isPocketWaypoint(), name));
+        if (!existed) {
+            broadcastAll(serverLevel.getServer());
+        }
     }
 
     public static void unregister(WaypointBlockEntity be) {
@@ -98,6 +107,7 @@ public class WaypointManager {
     public static void removeWaypoint(MinecraftServer server, UUID uid) {
         WaypointRegistryData.get(server).remove(uid);
         Set<UUID> affectedPlayers = PlayerWaypointData.get(server).deactivateAll(uid);
+        broadcastAll(server);
         for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
             if (affectedPlayers.contains(onlinePlayer.getUUID())) {
                 syncTo(onlinePlayer);
@@ -141,6 +151,37 @@ public class WaypointManager {
             registry.get(uid).ifPresent(record -> infos.add(new ActivatedWaypointInfo(uid, record.pocket(), record.name())));
         }
         PacketDistributor.sendToPlayer(player, new SyncActivatedWaypointsPayload(infos));
+    }
+
+    /**
+     * Sends every registered waypoint to the player. Used on login and by map
+     * integrations so unactivated waypoints are also visible.
+     */
+    public static void syncAllTo(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        List<WaypointSyncInfo> infos = new ArrayList<>();
+        WaypointRegistryData registry = WaypointRegistryData.get(server);
+        for (WaypointRecord record : registry.getAll()) {
+            infos.add(new WaypointSyncInfo(
+                    record.uid(),
+                    record.dimension().location(),
+                    record.pos(),
+                    record.pocket(),
+                    record.name()));
+        }
+        PacketDistributor.sendToPlayer(player, new SyncAllWaypointsPayload(infos));
+    }
+
+    /**
+     * Sends the full waypoint list to every online player.
+     */
+    public static void broadcastAll(MinecraftServer server) {
+        for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
+            syncAllTo(onlinePlayer);
+        }
     }
 
     public static boolean canRename(Player player, WaypointBlockEntity be) {

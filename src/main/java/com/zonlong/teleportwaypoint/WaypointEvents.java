@@ -15,6 +15,7 @@ public final class WaypointEvents {
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            WaypointManager.syncAllTo(player);
             WaypointManager.syncTo(player);
         }
     }

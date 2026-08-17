@@ -1,6 +1,7 @@
 package com.zonlong.teleportwaypoint;
 
 import com.zonlong.teleportwaypoint.block.entity.ModBlockEntities;
+import com.zonlong.teleportwaypoint.client.XaeroIntegrationLoader;
 import com.zonlong.teleportwaypoint.client.gui.RenamePocketWaypointScreen;
 import com.zonlong.teleportwaypoint.client.gui.RenameWaypointScreen;
 import com.zonlong.teleportwaypoint.client.gui.WaypointListScreen;
@@ -12,11 +13,13 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.neoforged.neoforge.common.NeoForge;
 
 // This class will not load on dedicated servers. Accessing client side code from here is safe.
 @Mod(value = TeleportWaypoint.MODID, dist = Dist.CLIENT)
@@ -28,6 +31,12 @@ public class TeleportWaypointClient {
         modEventBus.addListener(TeleportWaypointClient::onRegisterMenuScreens);
         modEventBus.addListener(TeleportWaypointClient::onRegisterEntityRenderers);
         modEventBus.addListener(TeleportWaypointClient::onRegisterAdditionalModels);
+
+        NeoForge.EVENT_BUS.addListener(TeleportWaypointClient::onClientTick);
+    }
+
+    private static void onClientTick(ClientTickEvent.Post event) {
+        XaeroIntegrationLoader.tick();
     }
 
     static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {

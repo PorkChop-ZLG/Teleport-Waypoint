@@ -21,10 +21,20 @@ public class ModNetwork {
                 SyncActivatedWaypointsPayload.STREAM_CODEC,
                 ModNetwork::handleSyncActivated);
 
+        registrar.playToClient(
+                SyncAllWaypointsPayload.TYPE,
+                SyncAllWaypointsPayload.STREAM_CODEC,
+                ModNetwork::handleSyncAllWaypoints);
+
         registrar.playToServer(
                 TeleportRequestPayload.TYPE,
                 TeleportRequestPayload.STREAM_CODEC,
                 ModNetwork::handleTeleportRequest);
+
+        registrar.playToServer(
+                MapTeleportRequestPayload.TYPE,
+                MapTeleportRequestPayload.STREAM_CODEC,
+                ModNetwork::handleMapTeleportRequest);
 
         registrar.playToServer(
                 RenameWaypointPayload.TYPE,
@@ -46,10 +56,22 @@ public class ModNetwork {
         context.enqueueWork(() -> ClientWaypointState.setActivated(payload.waypoints()));
     }
 
+    private static void handleSyncAllWaypoints(final SyncAllWaypointsPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> ClientWaypointState.setAllWaypoints(payload.waypoints()));
+    }
+
     private static void handleTeleportRequest(final TeleportRequestPayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer serverPlayer) {
                 WaypointTeleporter.teleport(serverPlayer, payload.source(), payload.target());
+            }
+        });
+    }
+
+    private static void handleMapTeleportRequest(final MapTeleportRequestPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer serverPlayer) {
+                WaypointTeleporter.teleportTo(serverPlayer, payload.target());
             }
         });
     }
@@ -82,6 +104,7 @@ public class ModNetwork {
             serverPlayer.level().sendBlockUpdated(payload.pos(), waypointEntity.getBlockState(), waypointEntity.getBlockState(), 3);
             // Update the global registry and the client list with the new name.
             WaypointManager.register(waypointEntity);
+            WaypointManager.broadcastAll(serverPlayer.getServer());
             WaypointManager.syncTo(serverPlayer);
             // After renaming, open the waypoint list.
             waypointEntity.openListScreen(serverPlayer);

@@ -148,6 +148,18 @@ src/main/java/com/zonlong/teleportwaypoint/
 
 ---
 
+## Xaero 地图联动（可选）
+
+- 安装 **Xaero's Minimap / Xaero's World Map** 后，世界地图与小地图会显示本模组的传送锚点。
+- 未激活锚点为灰色，已激活锚点为彩色；悬停显示名称与坐标。
+- 在世界地图右键已激活锚点可点击“传送”，直接调用本模组服务端传送逻辑。
+- 配置项：
+  - `showWaypoints`：是否显示传送锚点；
+  - `showWaypointNames`：是否显示锚点名称。
+- 未安装 Xaero 时本模组完全正常运行；Xaero 相关代码不会加载。
+
+> 说明：当前配置项通过本模组 `Config` 生效；尝试注册进 Xaero 设置界面时，因 Xaero 配置 channel 已只读而回退到本模组配置。
+
 ## 已知限制与后续计划
 
 - 口袋锚点暂无**合成配方**与**掉落表**（生存模式暂无法获取）

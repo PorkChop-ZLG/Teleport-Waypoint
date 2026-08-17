@@ -60,6 +60,10 @@ public class WaypointRegistryData extends SavedData {
         return Optional.ofNullable(waypoints.get(uid));
     }
 
+    public java.util.Collection<WaypointRecord> getAll() {
+        return waypoints.values();
+    }
+
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag list = new ListTag();

@@ -26,11 +26,24 @@ public class WaypointTeleporter {
     }
 
     public static void teleport(ServerPlayer player, UUID source, UUID target) {
+        if (!WaypointManager.isValidTeleportRequest(player, source, target)) {
+            player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.teleport_denied"));
+            return;
+        }
+        teleportTo(player, target);
+    }
+
+    /**
+     * Teleports a player directly to an activated waypoint. Used by the Xaero map
+     * overlay where the player does not need to stand next to a source waypoint.
+     * All validation is server-side.
+     */
+    public static void teleportTo(ServerPlayer player, UUID target) {
         MinecraftServer server = player.getServer();
         if (server == null) {
             return;
         }
-        if (!WaypointManager.isValidTeleportRequest(player, source, target)) {
+        if (!WaypointManager.isActivated(player, target)) {
             player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.teleport_denied"));
             return;
         }
