@@ -105,7 +105,9 @@ public class TeleportWaypointWorldReader
 
     @Override
     public int getRightClickTitleBackgroundColor(TeleportWaypointElement element) {
-        return colorFor(element);
+        // Use a neutral gray so the first menu row (the waypoint name) is highlighted
+        // like Xaero's "Choose an Option" placeholder instead of using state colors.
+        return 0xFF6B6B6B;
     }
 
     @Override
@@ -116,6 +118,10 @@ public class TeleportWaypointWorldReader
     @Override
     public ArrayList<RightClickOption> getRightClickOptions(TeleportWaypointElement element, IRightClickableElement target) {
         ArrayList<RightClickOption> options = new ArrayList<>();
+
+        String name = Component.translatable("gui.teleportwaypoint.map_menu_name",
+                element.info().displayName().getString()).getString();
+        options.add(new TeleportWaypointInfoOption(name, options.size(), target));
 
         String coords = Component.translatable("gui.teleportwaypoint.map_coords",
                 element.getX(), element.getY(), element.getZ()).getString();
@@ -140,12 +146,5 @@ public class TeleportWaypointWorldReader
     @Override
     public Tooltip getTooltip(TeleportWaypointElement element, TeleportWaypointContext context, boolean hovered) {
         return new Tooltip(element.info().displayName());
-    }
-
-    private static int colorFor(TeleportWaypointElement element) {
-        if (element.pocket()) {
-            return element.activated() ? 0xFF66BB6A : 0xFFFDD835;
-        }
-        return element.activated() ? 0xFF26C6DA : 0xFFE53935;
     }
 }

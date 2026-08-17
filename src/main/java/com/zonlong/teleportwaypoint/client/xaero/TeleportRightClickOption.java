@@ -25,5 +25,8 @@ public class TeleportRightClickOption extends RightClickOption {
     @Override
     public void onAction(Screen screen) {
         PacketDistributor.sendToServer(new MapTeleportRequestPayload(target));
+        if (screen != null) {
+            screen.onClose();
+        }
     }
 }

@@ -12,8 +12,12 @@ import xaero.map.gui.dropdown.rightclick.RightClickOption;
 public class TeleportWaypointInfoOption extends RightClickOption {
 
     public TeleportWaypointInfoOption(String name, int index, IRightClickableElement target) {
+        this(name, index, target, true);
+    }
+
+    public TeleportWaypointInfoOption(String name, int index, IRightClickableElement target, boolean active) {
         super(name, index, target);
-        setActive(false);
+        setActive(active);
     }
 
     @Override

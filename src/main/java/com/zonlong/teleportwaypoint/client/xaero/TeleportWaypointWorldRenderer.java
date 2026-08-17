@@ -2,7 +2,6 @@ package com.zonlong.teleportwaypoint.client.xaero;
 
 import com.zonlong.teleportwaypoint.TeleportWaypoint;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.resources.ResourceLocation;
@@ -18,7 +17,7 @@ import xaero.map.graphics.renderer.multitexture.MultiTextureRenderTypeRendererPr
  * Renders teleport waypoint markers on Xaero's world map using dedicated crystal
  * icons: red for inactive regular waypoints, cyan for active regular waypoints,
  * yellow for inactive pocket waypoints and green for active pocket waypoints.
- * Names are drawn when enabled.
+ * Names are intentionally not drawn on the map; hover tooltips show them.
  */
 public class TeleportWaypointWorldRenderer
         extends ElementRenderer<TeleportWaypointElement, TeleportWaypointContext, TeleportWaypointWorldRenderer> {
@@ -93,16 +92,6 @@ public class TeleportWaypointWorldRenderer
         }
         int half = ICON_SIZE / 2;
         guiGraphics.blit(texture, -half, -half, 0.0F, 0.0F, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
-
-        if (getContext().showNames) {
-            guiGraphics.drawString(
-                    Minecraft.getInstance().font,
-                    element.info().displayName(),
-                    half + 2,
-                    -4,
-                    0xFFFFFFFF,
-                    false);
-        }
         return true;
     }
 
