@@ -53,9 +53,8 @@ public class TeleportWaypointWorldProvider
             return false;
         }
         if (pocket) {
-            return activated
-                    ? XaeroWorldMapConfig.SHOW_ACTIVE_POCKET_WAYPOINTS.get()
-                    : XaeroWorldMapConfig.SHOW_INACTIVE_POCKET_WAYPOINTS.get();
+            // Pocket waypoints are only shown after the local player activates them.
+            return activated;
         }
         return activated
                 ? XaeroWorldMapConfig.SHOW_ACTIVE_WAYPOINTS.get()

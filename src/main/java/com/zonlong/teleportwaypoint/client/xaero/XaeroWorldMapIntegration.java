@@ -22,7 +22,6 @@ public final class XaeroWorldMapIntegration {
     private static boolean configAttempted;
 
     private static ConfigOption<Boolean> xaeroShowWaypoints;
-    private static ConfigOption<Boolean> xaeroShowWaypointNames;
 
     private XaeroWorldMapIntegration() {
     }
@@ -35,10 +34,6 @@ public final class XaeroWorldMapIntegration {
 
     public static boolean showWaypoints() {
         return XaeroWorldMapConfig.SHOW_WAYPOINTS.get();
-    }
-
-    public static boolean showWaypointNames() {
-        return XaeroWorldMapConfig.SHOW_WAYPOINT_NAMES.get();
     }
 
     private static void tryRegisterXaeroConfig() {
@@ -56,17 +51,11 @@ public final class XaeroWorldMapIntegration {
                     "teleportwaypoint.show_waypoints",
                     "Show Teleport Waypoints",
                     true);
-            xaeroShowWaypointNames = createBooleanOption(
-                    "teleportwaypoint.show_waypoint_names",
-                    "Show Teleport Waypoint Names",
-                    true);
             manager.register(xaeroShowWaypoints);
-            manager.register(xaeroShowWaypointNames);
             TeleportWaypoint.LOGGER.info("[TeleportWaypoint] Registered Xaero config options");
         } catch (Exception e) {
             TeleportWaypoint.LOGGER.info("[TeleportWaypoint] Xaero config options unavailable, using mod config fallback: {}", e.toString());
             xaeroShowWaypoints = null;
-            xaeroShowWaypointNames = null;
         }
     }
 
@@ -79,9 +68,6 @@ public final class XaeroWorldMapIntegration {
             var profile = configManager.getCurrentProfile();
             if (profile != null) {
                 profile.set(xaeroShowWaypoints, XaeroWorldMapConfig.SHOW_WAYPOINTS.get());
-                if (xaeroShowWaypointNames != null) {
-                    profile.set(xaeroShowWaypointNames, XaeroWorldMapConfig.SHOW_WAYPOINT_NAMES.get());
-                }
             }
         } catch (Exception e) {
             TeleportWaypoint.LOGGER.debug("[TeleportWaypoint] Failed to mirror config into Xaero World Map", e);

@@ -153,7 +153,7 @@ src/main/java/com/zonlong/teleportwaypoint/
 - 安装 **Xaero's Minimap / Xaero's World Map** 后，世界地图与小地图会显示本模组的传送锚点。
 - 世界地图图标：
   - 传送锚点：未激活红色 / 已激活青色；
-  - 口袋锚点：未激活黄色 / 已激活绿色。
+  - 口袋锚点：已激活绿色（未激活不显示）。
 - 悬停只显示名字，不再显示坐标。
 - 在世界地图右键锚点可打开菜单：
   - 第一行：名字；
@@ -166,8 +166,9 @@ src/main/java/com/zonlong/teleportwaypoint/
   - `xaero-worldmap.toml`：Xaero 世界地图联动配置
 - 小地图与世界地图各自独立控制：
   - `showWaypoints`：总开关；
-  - `showWaypointNames`：是否显示名称；
-  - 传送锚点 / 口袋锚点：分别控制未激活、已激活是否显示与显示范围（0 = 不限制，默认 128 格）。
+  - 小地图：统一 `range` 控制传送锚点与口袋锚点显示距离（0 = 不限制，默认 256 格）；
+  - 传送锚点：分别控制未激活、已激活是否显示；
+  - 口袋锚点：仅玩家激活后显示，未激活时不会出现在任何 Xaero 地图上。
 - 未安装 Xaero 时本模组完全正常运行；Xaero 相关代码不会加载。
 
 > 说明：配置以本模组的 NeoForge 配置为准；Xaero 设置界面中的相关选项仅作为镜像显示。
