@@ -16,6 +16,7 @@ public class ModBlocks {
             () -> new WaypointBlock(BlockBehaviour.Properties.of()
                     .strength(50.0F, 1200.0F)
                     .requiresCorrectToolForDrops()
+                    .sound(SoundType.GLASS)
                     .noLootTable()
                     .noOcclusion()));
 
@@ -24,6 +25,6 @@ public class ModBlocks {
             () -> new PocketWaypointBlock(BlockBehaviour.Properties.of()
                     .strength(1.5F, 1200.0F)
                     .requiresCorrectToolForDrops()
-                    .sound(SoundType.STONE)
+                    .sound(SoundType.GLASS)
                     .noOcclusion()));
 }
