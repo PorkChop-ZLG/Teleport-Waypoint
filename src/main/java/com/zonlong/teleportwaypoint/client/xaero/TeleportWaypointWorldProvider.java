@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.zonlong.teleportwaypoint.client.ClientWaypointInfo;
 import com.zonlong.teleportwaypoint.client.ClientWaypointState;
+import com.zonlong.teleportwaypoint.config.XaeroWorldMapConfig;
 
 import xaero.map.element.render.ElementRenderLocation;
 import xaero.map.element.render.ElementRenderProvider;
@@ -24,7 +25,7 @@ public class TeleportWaypointWorldProvider
         List<TeleportWaypointElement> elements = new ArrayList<>();
         if (context.mapDimension != null && ClientWaypointState.isInitialized()) {
             for (ClientWaypointInfo info : ClientWaypointState.getWaypointsIn(context.mapDimension)) {
-                if (XaeroIntegration.shouldShow(info.pocket(), ClientWaypointState.isActivated(info.uid()))) {
+                if (shouldShow(info.pocket(), ClientWaypointState.isActivated(info.uid()))) {
                     elements.add(new TeleportWaypointElement(info, ClientWaypointState.isActivated(info.uid())));
                 }
             }
@@ -45,5 +46,19 @@ public class TeleportWaypointWorldProvider
     @Override
     public void end(ElementRenderLocation location, TeleportWaypointContext context) {
         iterator = null;
+    }
+
+    private static boolean shouldShow(boolean pocket, boolean activated) {
+        if (!XaeroWorldMapConfig.SHOW_WAYPOINTS.get()) {
+            return false;
+        }
+        if (pocket) {
+            return activated
+                    ? XaeroWorldMapConfig.SHOW_ACTIVE_POCKET_WAYPOINTS.get()
+                    : XaeroWorldMapConfig.SHOW_INACTIVE_POCKET_WAYPOINTS.get();
+        }
+        return activated
+                ? XaeroWorldMapConfig.SHOW_ACTIVE_WAYPOINTS.get()
+                : XaeroWorldMapConfig.SHOW_INACTIVE_WAYPOINTS.get();
     }
 }

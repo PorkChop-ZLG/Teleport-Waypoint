@@ -2,8 +2,8 @@ package com.zonlong.teleportwaypoint.client.xaero;
 
 import java.util.ArrayList;
 
-import com.zonlong.teleportwaypoint.Config;
 import com.zonlong.teleportwaypoint.TeleportWaypoint;
+import com.zonlong.teleportwaypoint.config.XaeroWorldMapConfig;
 
 import net.minecraft.network.chat.Component;
 import net.neoforged.fml.ModList;
@@ -34,13 +34,11 @@ public final class XaeroWorldMapIntegration {
     }
 
     public static boolean showWaypoints() {
-        // Config is the single source of truth; Xaero's own option is only a mirror.
-        return Config.SHOW_WAYPOINTS.get();
+        return XaeroWorldMapConfig.SHOW_WAYPOINTS.get();
     }
 
     public static boolean showWaypointNames() {
-        // Names are always shown; there is no mod config toggle for this today.
-        return true;
+        return XaeroWorldMapConfig.SHOW_WAYPOINT_NAMES.get();
     }
 
     private static void tryRegisterXaeroConfig() {
@@ -80,9 +78,9 @@ public final class XaeroWorldMapIntegration {
             var configManager = WorldMap.INSTANCE.getConfigs().getClientConfigManager();
             var profile = configManager.getCurrentProfile();
             if (profile != null) {
-                profile.set(xaeroShowWaypoints, Config.SHOW_WAYPOINTS.get());
+                profile.set(xaeroShowWaypoints, XaeroWorldMapConfig.SHOW_WAYPOINTS.get());
                 if (xaeroShowWaypointNames != null) {
-                    profile.set(xaeroShowWaypointNames, true);
+                    profile.set(xaeroShowWaypointNames, XaeroWorldMapConfig.SHOW_WAYPOINT_NAMES.get());
                 }
             }
         } catch (Exception e) {

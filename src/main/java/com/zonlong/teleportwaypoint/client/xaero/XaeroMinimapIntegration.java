@@ -10,8 +10,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-import com.zonlong.teleportwaypoint.Config;
 import com.zonlong.teleportwaypoint.TeleportWaypoint;
+import com.zonlong.teleportwaypoint.config.XaeroMinimapConfig;
 import com.zonlong.teleportwaypoint.client.ClientWaypointInfo;
 import com.zonlong.teleportwaypoint.client.ClientWaypointState;
 
@@ -96,14 +96,14 @@ public final class XaeroMinimapIntegration {
             return;
         }
         int revision = ClientWaypointState.getRevision();
-        boolean showWaypoints = XaeroIntegration.showWaypoints();
-        boolean showWaypointNames = XaeroIntegration.showWaypointNames();
-        boolean showInactiveWaypoints = Config.SHOW_INACTIVE_WAYPOINTS.get();
-        boolean showActiveWaypoints = Config.SHOW_ACTIVE_WAYPOINTS.get();
-        int waypointRange = Config.WAYPOINT_RANGE.get();
-        boolean showInactivePocketWaypoints = Config.SHOW_INACTIVE_POCKET_WAYPOINTS.get();
-        boolean showActivePocketWaypoints = Config.SHOW_ACTIVE_POCKET_WAYPOINTS.get();
-        int pocketWaypointRange = Config.POCKET_WAYPOINT_RANGE.get();
+        boolean showWaypoints = XaeroMinimapConfig.SHOW_WAYPOINTS.get();
+        boolean showWaypointNames = XaeroMinimapConfig.SHOW_WAYPOINT_NAMES.get();
+        boolean showInactiveWaypoints = XaeroMinimapConfig.SHOW_INACTIVE_WAYPOINTS.get();
+        boolean showActiveWaypoints = XaeroMinimapConfig.SHOW_ACTIVE_WAYPOINTS.get();
+        int waypointRange = XaeroMinimapConfig.WAYPOINT_RANGE.get();
+        boolean showInactivePocketWaypoints = XaeroMinimapConfig.SHOW_INACTIVE_POCKET_WAYPOINTS.get();
+        boolean showActivePocketWaypoints = XaeroMinimapConfig.SHOW_ACTIVE_POCKET_WAYPOINTS.get();
+        int pocketWaypointRange = XaeroMinimapConfig.POCKET_WAYPOINT_RANGE.get();
         boolean configChanged = showWaypoints != lastShowWaypoints
                 || showWaypointNames != lastShowWaypointNames
                 || showInactiveWaypoints != lastShowInactiveWaypoints
@@ -139,11 +139,11 @@ public final class XaeroMinimapIntegration {
         if (showWaypoints) {
             Player player = Minecraft.getInstance().player;
             for (ClientWaypointInfo info : ClientWaypointState.getWaypoints()) {
-                if (!XaeroIntegration.shouldShow(info.pocket(), ClientWaypointState.isActivated(info.uid()))) {
+                if (!shouldShow(info.pocket(), ClientWaypointState.isActivated(info.uid()))) {
                     continue;
                 }
                 if (player != null && info.dimension().equals(player.level().dimension())) {
-                    int range = XaeroIntegration.getDisplayRange(info.pocket());
+                    int range = getDisplayRange(info.pocket());
                     if (range > 0 && distanceSq(player.blockPosition(), info.pos()) > (long) range * range) {
                         continue;
                     }
@@ -168,8 +168,8 @@ public final class XaeroMinimapIntegration {
         if (lastPlayerPos == null) {
             return true;
         }
-        boolean anyRangeEnabled = XaeroIntegration.getDisplayRange(false) > 0
-                || XaeroIntegration.getDisplayRange(true) > 0;
+        boolean anyRangeEnabled = getDisplayRange(false) > 0
+                || getDisplayRange(true) > 0;
         if (!anyRangeEnabled) {
             return false;
         }
@@ -192,6 +192,26 @@ public final class XaeroMinimapIntegration {
         long dy = a.getY() - b.getY();
         long dz = a.getZ() - b.getZ();
         return dx * dx + dy * dy + dz * dz;
+    }
+
+    private static boolean shouldShow(boolean pocket, boolean activated) {
+        if (!XaeroMinimapConfig.SHOW_WAYPOINTS.get()) {
+            return false;
+        }
+        if (pocket) {
+            return activated
+                    ? XaeroMinimapConfig.SHOW_ACTIVE_POCKET_WAYPOINTS.get()
+                    : XaeroMinimapConfig.SHOW_INACTIVE_POCKET_WAYPOINTS.get();
+        }
+        return activated
+                ? XaeroMinimapConfig.SHOW_ACTIVE_WAYPOINTS.get()
+                : XaeroMinimapConfig.SHOW_INACTIVE_WAYPOINTS.get();
+    }
+
+    private static int getDisplayRange(boolean pocket) {
+        return pocket
+                ? XaeroMinimapConfig.POCKET_WAYPOINT_RANGE.get()
+                : XaeroMinimapConfig.WAYPOINT_RANGE.get();
     }
 
     private static void removeStale(MinimapWorldManager manager,
@@ -263,7 +283,7 @@ public final class XaeroMinimapIntegration {
                     color = info.pocket() ? WaypointColor.YELLOW : WaypointColor.RED;
                 }
                 String symbol = info.pocket() ? "P" : "W";
-                String displayName = XaeroIntegration.showWaypointNames()
+                String displayName = XaeroMinimapConfig.SHOW_WAYPOINT_NAMES.get()
                         ? info.displayName().getString()
                         : "";
 
