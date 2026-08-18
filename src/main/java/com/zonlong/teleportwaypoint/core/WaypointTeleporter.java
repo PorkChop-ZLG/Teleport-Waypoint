@@ -26,10 +26,8 @@ public class WaypointTeleporter {
     }
 
     public static void teleport(ServerPlayer player, UUID source, UUID target) {
-        if (!TeleportRateLimiter.tryAcquire(player.getUUID())) {
-            player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.teleport_cooldown"));
-            return;
-        }
+        // Rate limiting is enforced once inside teleportTo(), which is the shared
+        // entry point for both GUI and map teleports.
         if (!WaypointManager.isValidTeleportRequest(player, source, target)) {
             player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.teleport_denied"));
             return;

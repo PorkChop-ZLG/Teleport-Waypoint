@@ -25,15 +25,20 @@ public final class TeleportRateLimiter {
             return true;
         }
         long now = System.currentTimeMillis();
-        Long previous = LAST_TELEPORT.putIfAbsent(playerId, now);
-        if (previous == null) {
-            return true;
+        while (true) {
+            Long previous = LAST_TELEPORT.get(playerId);
+            if (previous == null) {
+                if (LAST_TELEPORT.putIfAbsent(playerId, now) == null) {
+                    return true;
+                }
+            } else if (now - previous >= cooldownMs) {
+                if (LAST_TELEPORT.replace(playerId, previous, now)) {
+                    return true;
+                }
+            } else {
+                return false;
+            }
         }
-        if (now - previous >= cooldownMs) {
-            LAST_TELEPORT.put(playerId, now);
-            return true;
-        }
-        return false;
     }
 
     public static void remove(UUID playerId) {

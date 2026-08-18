@@ -58,8 +58,7 @@ public class WaypointManager {
             registry.put(record);
             broadcastUpdate(serverLevel.getServer(), record);
         } else {
-            // Already registered with identical data; keep the registry entry in sync without broadcasting.
-            registry.put(record);
+            // Already registered with identical data; nothing to persist or broadcast.
         }
     }
 

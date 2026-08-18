@@ -39,9 +39,7 @@ public final class XaeroWorldMapIntegration {
     }
 
     public static boolean showWaypointNames() {
-        if (xaeroShowWaypointNames != null && WorldMap.INSTANCE != null) {
-            return WorldMap.INSTANCE.getConfigs().getClientConfigManager().getEffective(xaeroShowWaypointNames);
-        }
+        // Names are always shown; there is no mod config toggle for this today.
         return true;
     }
 
@@ -83,6 +81,9 @@ public final class XaeroWorldMapIntegration {
             var profile = configManager.getCurrentProfile();
             if (profile != null) {
                 profile.set(xaeroShowWaypoints, Config.SHOW_WAYPOINTS.get());
+                if (xaeroShowWaypointNames != null) {
+                    profile.set(xaeroShowWaypointNames, true);
+                }
             }
         } catch (Exception e) {
             TeleportWaypoint.LOGGER.debug("[TeleportWaypoint] Failed to mirror config into Xaero World Map", e);

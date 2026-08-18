@@ -38,14 +38,16 @@ import xaero.hud.minimap.world.MinimapWorldManager;
  * <p>Custom waypoint maps are keyed by a mod-specific {@link ResourceLocation}
  * so we never share an ID namespace with other integrations. IDs are stable
  * hashes of the waypoint UUID with collision probing, and removals verify the
- * stored {@link Waypoint} instance is still ours before deleting it.
+ * stored {@link Waypoint} instance is still ours before deleting it. All ID
+ * bookkeeping is scoped per custom key (i.e. per dimension bucket) so the same
+ * integer ID can safely exist in different dimension maps.
  */
 public final class XaeroMinimapIntegration {
     private static final int MAX_ID = 2_000_000_000;
 
-    private static final Map<UUID, Integer> UID_TO_ID = new HashMap<>();
-    private static final Map<Integer, UUID> ID_TO_UID = new HashMap<>();
-    private static final Map<Integer, Waypoint> ID_TO_WAYPOINT = new HashMap<>();
+    private static final Map<ResourceLocation, Map<UUID, Integer>> UID_TO_ID = new HashMap<>();
+    private static final Map<ResourceLocation, Map<Integer, UUID>> ID_TO_UID = new HashMap<>();
+    private static final Map<ResourceLocation, Map<Integer, Waypoint>> ID_TO_WAYPOINT = new HashMap<>();
     private static final Map<ResourceLocation, Set<Integer>> OWNED = new HashMap<>();
     private static int lastRevision = -1;
     private static boolean lastShowWaypoints = true;
@@ -87,6 +89,10 @@ public final class XaeroMinimapIntegration {
 
     public static void sync() {
         if (!initialized) {
+            return;
+        }
+        if (!ClientWaypointState.isInitialized()) {
+            // The paginated snapshot is still in progress; do not render a partial set.
             return;
         }
         int revision = ClientWaypointState.getRevision();
@@ -199,7 +205,7 @@ public final class XaeroMinimapIntegration {
 
             if (!desired.containsKey(key)) {
                 for (int id : owned) {
-                    removeOwnedWaypoint(map, id);
+                    removeOwnedWaypoint(map, key, id);
                 }
                 it.remove();
                 continue;
@@ -211,9 +217,9 @@ public final class XaeroMinimapIntegration {
             }
 
             owned.removeIf(id -> {
-                UUID uid = ID_TO_UID.get(id);
+                UUID uid = idToUidMap(key).get(id);
                 if (uid == null || !desiredUids.contains(uid)) {
-                    removeOwnedWaypoint(map, id);
+                    removeOwnedWaypoint(map, key, id);
                     return true;
                 }
                 return false;
@@ -227,23 +233,26 @@ public final class XaeroMinimapIntegration {
             ResourceLocation key = entry.getKey();
             Int2ObjectMap<Waypoint> map = manager.getCustomWaypoints(key);
             Set<Integer> owned = OWNED.computeIfAbsent(key, k -> new HashSet<>());
+            Map<UUID, Integer> idByUid = uidToIdMap(key);
+            Map<Integer, UUID> uidById = idToUidMap(key);
+            Map<Integer, Waypoint> waypointById = idToWaypointMap(key);
 
             for (ClientWaypointInfo info : entry.getValue()) {
-                Integer oldId = UID_TO_ID.get(info.uid());
+                Integer oldId = idByUid.get(info.uid());
                 if (oldId != null) {
                     Waypoint current = map.get(oldId);
-                    if (current != null && current != ID_TO_WAYPOINT.get(oldId)) {
+                    if (current != null && current != waypointById.get(oldId)) {
                         // Our old slot was overwritten by another integration; release it and allocate a fresh id.
-                        ID_TO_WAYPOINT.remove(oldId);
-                        ID_TO_UID.remove(oldId);
-                        UID_TO_ID.remove(info.uid());
+                        waypointById.remove(oldId);
+                        uidById.remove(oldId);
+                        idByUid.remove(info.uid());
                         owned.remove(oldId);
                     }
                 }
 
-                int id = allocateId(map, info.uid());
-                UID_TO_ID.put(info.uid(), id);
-                ID_TO_UID.put(id, info.uid());
+                int id = allocateId(map, key, info.uid());
+                idByUid.put(info.uid(), id);
+                uidById.put(id, info.uid());
                 owned.add(id);
 
                 boolean activated = ClientWaypointState.isActivated(info.uid());
@@ -260,7 +269,7 @@ public final class XaeroMinimapIntegration {
 
                 Waypoint existing = map.get(id);
                 if (existing != null
-                        && existing == ID_TO_WAYPOINT.get(id)
+                        && existing == waypointById.get(id)
                         && existing.getX() == info.pos().getX()
                         && existing.getY() == info.pos().getY()
                         && existing.getZ() == info.pos().getZ()
@@ -279,42 +288,50 @@ public final class XaeroMinimapIntegration {
                         color);
                 waypoint.setTemporary(true);
                 map.put(id, waypoint);
-                ID_TO_WAYPOINT.put(id, waypoint);
+                waypointById.put(id, waypoint);
             }
         }
     }
 
-    private static void removeOwnedWaypoint(Int2ObjectMap<Waypoint> map, int id) {
+    private static void removeOwnedWaypoint(Int2ObjectMap<Waypoint> map, ResourceLocation key, int id) {
+        Map<Integer, Waypoint> waypointById = idToWaypointMap(key);
+        Map<Integer, UUID> uidById = idToUidMap(key);
+        Map<UUID, Integer> idByUid = uidToIdMap(key);
+
         Waypoint current = map.get(id);
-        Waypoint expected = ID_TO_WAYPOINT.get(id);
+        Waypoint expected = waypointById.get(id);
         // Only delete when the current entry is still the exact object we created.
         // If another integration overwrote this id, leave their waypoint alone.
         if (current != null && current == expected) {
             map.remove(id);
         }
-        ID_TO_WAYPOINT.remove(id);
-        UUID uid = ID_TO_UID.remove(id);
+        waypointById.remove(id);
+        UUID uid = uidById.remove(id);
         if (uid != null) {
-            UID_TO_ID.remove(uid);
+            idByUid.remove(uid);
         }
     }
 
-    private static int allocateId(Int2ObjectMap<Waypoint> map, UUID uid) {
-        Integer existing = UID_TO_ID.get(uid);
+    private static int allocateId(Int2ObjectMap<Waypoint> map, ResourceLocation key, UUID uid) {
+        Map<UUID, Integer> idByUid = uidToIdMap(key);
+        Map<Integer, UUID> uidById = idToUidMap(key);
+        Map<Integer, Waypoint> waypointById = idToWaypointMap(key);
+
+        Integer existing = idByUid.get(uid);
         if (existing != null) {
             Waypoint current = map.get(existing);
-            if (current == null || current == ID_TO_WAYPOINT.get(existing)) {
+            if (current == null || current == waypointById.get(existing)) {
                 return existing;
             }
             // Our old slot was taken over by another integration; release it.
-            ID_TO_WAYPOINT.remove(existing);
-            ID_TO_UID.remove(existing);
-            UID_TO_ID.remove(uid);
+            waypointById.remove(existing);
+            uidById.remove(existing);
+            idByUid.remove(uid);
         }
         int id = stableId(uid);
-        while (map.containsKey(id) && !Objects.equals(ID_TO_UID.get(id), uid)) {
+        while (map.containsKey(id) && !Objects.equals(uidById.get(id), uid)) {
             Waypoint occupant = map.get(id);
-            if (occupant != null && occupant == ID_TO_WAYPOINT.get(id) && Objects.equals(ID_TO_UID.get(id), uid)) {
+            if (occupant != null && occupant == waypointById.get(id) && Objects.equals(uidById.get(id), uid)) {
                 return id;
             }
             id = nextId(id);
@@ -336,7 +353,15 @@ public final class XaeroMinimapIntegration {
                 "minimap/" + dimension.getNamespace() + "/" + dimension.getPath());
     }
 
-    private static UUID findUid(int id) {
-        return ID_TO_UID.get(id);
+    private static Map<UUID, Integer> uidToIdMap(ResourceLocation key) {
+        return UID_TO_ID.computeIfAbsent(key, k -> new HashMap<>());
+    }
+
+    private static Map<Integer, UUID> idToUidMap(ResourceLocation key) {
+        return ID_TO_UID.computeIfAbsent(key, k -> new HashMap<>());
+    }
+
+    private static Map<Integer, Waypoint> idToWaypointMap(ResourceLocation key) {
+        return ID_TO_WAYPOINT.computeIfAbsent(key, k -> new HashMap<>());
     }
 }

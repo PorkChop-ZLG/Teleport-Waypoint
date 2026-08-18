@@ -41,6 +41,9 @@ public final class ClientWaypointState {
     /** Applies one page of the full snapshot; resets on page 0 and flushes queued increments when done. */
     public static void applySnapshot(List<WaypointSyncInfo> infos, int page, boolean done) {
         if (page == 0) {
+            // A new snapshot invalidates any previous partial state and queued increments.
+            initialized = false;
+            pending.clear();
             waypoints = Map.of();
         }
         Map<UUID, ClientWaypointInfo> map = new HashMap<>(waypoints);
@@ -48,9 +51,9 @@ public final class ClientWaypointState {
             map.put(info.uid(), toClientInfo(info));
         }
         waypoints = Map.copyOf(map);
-        revision++;
         if (done) {
             initialized = true;
+            revision++;
             flushPending();
         }
     }
@@ -74,6 +77,20 @@ public final class ClientWaypointState {
         Map<UUID, ClientWaypointInfo> map = new HashMap<>(waypoints);
         map.put(info.uid(), toClientInfo(info));
         waypoints = Map.copyOf(map);
+
+        // Keep activated-list display names in sync for every player who has this waypoint activated.
+        List<ActivatedWaypointInfo> list = new ArrayList<>(activated);
+        boolean activatedChanged = false;
+        for (int i = 0; i < list.size(); i++) {
+            ActivatedWaypointInfo activatedInfo = list.get(i);
+            if (activatedInfo.uid().equals(info.uid())) {
+                list.set(i, new ActivatedWaypointInfo(activatedInfo.uid(), activatedInfo.pocket(), info.name()));
+                activatedChanged = true;
+            }
+        }
+        if (activatedChanged) {
+            activated = List.copyOf(list);
+        }
         revision++;
     }
 
