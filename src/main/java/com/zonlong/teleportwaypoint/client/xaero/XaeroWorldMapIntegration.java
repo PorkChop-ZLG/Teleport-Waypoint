@@ -29,13 +29,12 @@ public final class XaeroWorldMapIntegration {
 
     public static void tick() {
         tryRegisterXaeroConfig();
+        syncConfigToXaero();
         registerWorldMap();
     }
 
     public static boolean showWaypoints() {
-        if (xaeroShowWaypoints != null && WorldMap.INSTANCE != null) {
-            return WorldMap.INSTANCE.getConfigs().getClientConfigManager().getEffective(xaeroShowWaypoints);
-        }
+        // Config is the single source of truth; Xaero's own option is only a mirror.
         return Config.SHOW_WAYPOINTS.get();
     }
 
@@ -72,6 +71,21 @@ public final class XaeroWorldMapIntegration {
             TeleportWaypoint.LOGGER.info("[TeleportWaypoint] Xaero config options unavailable, using mod config fallback: {}", e.toString());
             xaeroShowWaypoints = null;
             xaeroShowWaypointNames = null;
+        }
+    }
+
+    private static void syncConfigToXaero() {
+        if (xaeroShowWaypoints == null || WorldMap.INSTANCE == null) {
+            return;
+        }
+        try {
+            var configManager = WorldMap.INSTANCE.getConfigs().getClientConfigManager();
+            var profile = configManager.getCurrentProfile();
+            if (profile != null) {
+                profile.set(xaeroShowWaypoints, Config.SHOW_WAYPOINTS.get());
+            }
+        } catch (Exception e) {
+            TeleportWaypoint.LOGGER.debug("[TeleportWaypoint] Failed to mirror config into Xaero World Map", e);
         }
     }
 

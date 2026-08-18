@@ -1,5 +1,6 @@
 package com.zonlong.teleportwaypoint;
 
+import com.zonlong.teleportwaypoint.core.TeleportRateLimiter;
 import com.zonlong.teleportwaypoint.core.WaypointManager;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -17,6 +18,13 @@ public final class WaypointEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             WaypointManager.syncAllTo(player);
             WaypointManager.syncTo(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            TeleportRateLimiter.remove(player.getUUID());
         }
     }
 }

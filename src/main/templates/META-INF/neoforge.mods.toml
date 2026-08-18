@@ -92,7 +92,7 @@ Example mod description.
 [[dependencies.${mod_id}]]
     modId="xaerominimap"
     type="optional"
-    versionRange="[1,)"
+    versionRange="[25.3.5,)"
     ordering="AFTER"
     side="CLIENT"
 
@@ -100,7 +100,7 @@ Example mod description.
 [[dependencies.${mod_id}]]
     modId="xaeroworldmap"
     type="optional"
-    versionRange="[1,)"
+    versionRange="[1.40.6,)"
     ordering="AFTER"
     side="CLIENT"
 

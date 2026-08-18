@@ -8,6 +8,9 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
+    // 传送冷却
+    public static final ModConfigSpec.IntValue TELEPORT_COOLDOWN_MS;
+
     // Xaero 地图联动
     public static final ModConfigSpec.BooleanValue SHOW_WAYPOINTS;
     public static final ModConfigSpec.BooleanValue SHOW_INACTIVE_WAYPOINTS;
@@ -18,6 +21,12 @@ public class Config {
     public static final ModConfigSpec.IntValue POCKET_WAYPOINT_RANGE;
 
     static {
+        BUILDER.push("teleport");
+        TELEPORT_COOLDOWN_MS = BUILDER
+                .comment("Minimum delay in milliseconds between two teleport requests per player. 0 disables the cooldown.")
+                .defineInRange("cooldownMs", 1000, 0, 60000);
+        BUILDER.pop();
+
         BUILDER.push("xaeroMapIntegration");
 
         SHOW_WAYPOINTS = BUILDER
@@ -33,7 +42,7 @@ public class Config {
                 .define("showActive", true);
         WAYPOINT_RANGE = BUILDER
                 .comment("Maximum distance in blocks for teleport waypoints to appear. 0 disables the limit.")
-                .defineInRange("range", 256, 0, 100000);
+                .defineInRange("range", 128, 0, 100000);
         BUILDER.pop();
 
         BUILDER.push("pocketWaypoint");
@@ -45,7 +54,7 @@ public class Config {
                 .define("showActive", true);
         POCKET_WAYPOINT_RANGE = BUILDER
                 .comment("Maximum distance in blocks for pocket waypoints to appear. 0 disables the limit.")
-                .defineInRange("range", 256, 0, 100000);
+                .defineInRange("range", 128, 0, 100000);
         BUILDER.pop();
 
         BUILDER.pop();

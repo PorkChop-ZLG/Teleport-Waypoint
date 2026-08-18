@@ -6,9 +6,14 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
+import com.zonlong.teleportwaypoint.network.ActivatedWaypointAddPayload;
 import com.zonlong.teleportwaypoint.network.ActivatedWaypointInfo;
+import com.zonlong.teleportwaypoint.network.ActivatedWaypointRemovePayload;
+import com.zonlong.teleportwaypoint.network.AddWaypointPayload;
+import com.zonlong.teleportwaypoint.network.RemoveWaypointPayload;
 import com.zonlong.teleportwaypoint.network.SyncActivatedWaypointsPayload;
 import com.zonlong.teleportwaypoint.network.SyncAllWaypointsPayload;
+import com.zonlong.teleportwaypoint.network.UpdateWaypointPayload;
 import com.zonlong.teleportwaypoint.network.WaypointSyncInfo;
 
 import net.minecraft.core.BlockPos;
@@ -44,13 +49,17 @@ public class WaypointManager {
         } else {
             name = WaypointBlockEntity.isValidId(be.getId()) ? be.getId() : "empty";
         }
-        boolean existed = registry.get(uid)
-                .filter(record -> record.dimension().equals(serverLevel.dimension())
-                        && record.pos().equals(be.getBlockPos()))
-                .isPresent();
-        registry.put(new WaypointRecord(uid, serverLevel.dimension(), be.getBlockPos(), be.isPocketWaypoint(), name));
-        if (!existed) {
-            broadcastAll(serverLevel.getServer());
+        WaypointRecord record = new WaypointRecord(uid, serverLevel.dimension(), be.getBlockPos(), be.isPocketWaypoint(), name);
+        WaypointRecord existing = registry.get(uid).orElse(null);
+        if (existing == null) {
+            registry.put(record);
+            broadcastAdd(serverLevel.getServer(), record);
+        } else if (!existing.equals(record)) {
+            registry.put(record);
+            broadcastUpdate(serverLevel.getServer(), record);
+        } else {
+            // Already registered with identical data; keep the registry entry in sync without broadcasting.
+            registry.put(record);
         }
     }
 
@@ -84,7 +93,9 @@ public class WaypointManager {
         register(be);
         PlayerWaypointData.get(player.getServer()).activate(player.getUUID(), uid);
 
-        syncTo(player);
+        // Send the incremental activated-add to the player.
+        WaypointRegistryData.get(player.getServer()).get(uid)
+                .ifPresent(record -> PacketDistributor.sendToPlayer(player, new ActivatedWaypointAddPayload(toActivatedInfo(record))));
 
         // 激活音效：经验球拾取声，在方块位置播放（附近玩家可闻）
         if (be.getLevel() instanceof ServerLevel serverLevel) {
@@ -101,18 +112,18 @@ public class WaypointManager {
 
     public static void deactivate(ServerPlayer player, UUID uid) {
         PlayerWaypointData.get(player.getServer()).deactivate(player.getUUID(), uid);
-        syncTo(player);
+        PacketDistributor.sendToPlayer(player, new ActivatedWaypointRemovePayload(uid));
     }
 
     public static void removeWaypoint(MinecraftServer server, UUID uid) {
-        boolean removed = WaypointRegistryData.get(server).remove(uid);
+        // Remove the registry record if it is still present (unregister() may already have removed it).
+        WaypointRegistryData.get(server).remove(uid);
         Set<UUID> affectedPlayers = PlayerWaypointData.get(server).deactivateAll(uid);
-        if (removed) {
-            broadcastAll(server);
-        }
+        // Always broadcast the removal so every client drops the waypoint, including unactivated ghosts.
+        broadcastRemove(server, uid);
         for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
             if (affectedPlayers.contains(onlinePlayer.getUUID())) {
-                syncTo(onlinePlayer);
+                PacketDistributor.sendToPlayer(onlinePlayer, new ActivatedWaypointRemovePayload(uid));
             }
         }
     }
@@ -141,6 +152,7 @@ public class WaypointManager {
 
     /**
      * Sends the player's current activated-waypoint list (with names) to the client.
+     * Used on login and after rename so display names stay fresh.
      */
     public static void syncTo(ServerPlayer player) {
         MinecraftServer server = player.getServer();
@@ -150,14 +162,13 @@ public class WaypointManager {
         List<ActivatedWaypointInfo> infos = new ArrayList<>();
         WaypointRegistryData registry = WaypointRegistryData.get(server);
         for (UUID uid : getActivated(player)) {
-            registry.get(uid).ifPresent(record -> infos.add(new ActivatedWaypointInfo(uid, record.pocket(), record.name())));
+            registry.get(uid).ifPresent(record -> infos.add(toActivatedInfo(record)));
         }
         PacketDistributor.sendToPlayer(player, new SyncActivatedWaypointsPayload(infos));
     }
 
     /**
-     * Sends every registered waypoint to the player. Used on login and by map
-     * integrations so unactivated waypoints are also visible.
+     * Sends every registered waypoint to the player as a paginated snapshot. Used on login.
      */
     public static void syncAllTo(ServerPlayer player) {
         MinecraftServer server = player.getServer();
@@ -167,22 +178,17 @@ public class WaypointManager {
         List<WaypointSyncInfo> infos = new ArrayList<>();
         WaypointRegistryData registry = WaypointRegistryData.get(server);
         for (WaypointRecord record : registry.getAll()) {
-            infos.add(new WaypointSyncInfo(
-                    record.uid(),
-                    record.dimension().location(),
-                    record.pos(),
-                    record.pocket(),
-                    record.name()));
+            infos.add(toSyncInfo(record));
         }
-        PacketDistributor.sendToPlayer(player, new SyncAllWaypointsPayload(infos));
-    }
 
-    /**
-     * Sends the full waypoint list to every online player.
-     */
-    public static void broadcastAll(MinecraftServer server) {
-        for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
-            syncAllTo(onlinePlayer);
+        int pageSize = SyncAllWaypointsPayload.MAX_PAGE_SIZE;
+        int total = infos.size();
+        int pages = Math.max(1, (total + pageSize - 1) / pageSize);
+        for (int page = 0; page < pages; page++) {
+            int from = page * pageSize;
+            int to = Math.min(total, from + pageSize);
+            List<WaypointSyncInfo> pageEntries = infos.subList(from, to);
+            PacketDistributor.sendToPlayer(player, new SyncAllWaypointsPayload(pageEntries, page, page == pages - 1));
         }
     }
 
@@ -211,6 +217,39 @@ public class WaypointManager {
         }
         be.openListScreen(serverPlayer);
         return InteractionResult.SUCCESS;
+    }
+
+    private static void broadcastAdd(MinecraftServer server, WaypointRecord record) {
+        WaypointSyncInfo info = toSyncInfo(record);
+        for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(onlinePlayer, new AddWaypointPayload(info));
+        }
+    }
+
+    private static void broadcastUpdate(MinecraftServer server, WaypointRecord record) {
+        WaypointSyncInfo info = toSyncInfo(record);
+        for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(onlinePlayer, new UpdateWaypointPayload(info));
+        }
+    }
+
+    private static void broadcastRemove(MinecraftServer server, UUID uid) {
+        for (ServerPlayer onlinePlayer : server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(onlinePlayer, new RemoveWaypointPayload(uid));
+        }
+    }
+
+    private static WaypointSyncInfo toSyncInfo(WaypointRecord record) {
+        return new WaypointSyncInfo(
+                record.uid(),
+                record.dimension().location(),
+                record.pos(),
+                record.pocket(),
+                record.name());
+    }
+
+    private static ActivatedWaypointInfo toActivatedInfo(WaypointRecord record) {
+        return new ActivatedWaypointInfo(record.uid(), record.pocket(), record.name());
     }
 
     private static UUID ensureUniqueUid(WaypointBlockEntity be, WaypointRegistryData registry, ServerLevel level) {

@@ -26,6 +26,7 @@
   "chat.teleportwaypoint.target_missing": "Target waypoint no longer exists.",
   "chat.teleportwaypoint.invalid_dimension": "Target dimension is invalid.",
   "chat.teleportwaypoint.teleport_denied": "Teleport request is invalid.",
+  "chat.teleportwaypoint.teleport_cooldown": "You are teleporting too quickly! Please wait a moment.",
 
   "teleportwaypoint.waypoint.empty": "Unnamed Waypoint",
   "teleportwaypoint.waypoint.village": "Village",

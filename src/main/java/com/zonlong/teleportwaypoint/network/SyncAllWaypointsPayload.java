@@ -12,17 +12,21 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * S→C: full list of registered waypoints in the world. Used to keep Xaero map
- * overlays up to date for both activated and unactivated waypoints.
+ * S→C: one page of the full registered-waypoint snapshot. Sent on login/reconnect.
+ * The client accumulates pages and treats the payload as complete when {@code done} is true.
  */
-public record SyncAllWaypointsPayload(List<WaypointSyncInfo> waypoints) implements CustomPacketPayload {
+public record SyncAllWaypointsPayload(List<WaypointSyncInfo> waypoints, int page, boolean done) implements CustomPacketPayload {
+    public static final int MAX_PAGE_SIZE = 500;
+
     public static final Type<SyncAllWaypointsPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, "sync_all_waypoints"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncAllWaypointsPayload> STREAM_CODEC =
             StreamCodec.composite(
-                    ByteBufCodecs.collection(ArrayList::new, WaypointSyncInfo.STREAM_CODEC),
+                    ByteBufCodecs.collection(ArrayList::new, WaypointSyncInfo.STREAM_CODEC, MAX_PAGE_SIZE),
                     SyncAllWaypointsPayload::waypoints,
+                    ByteBufCodecs.VAR_INT, SyncAllWaypointsPayload::page,
+                    ByteBufCodecs.BOOL, SyncAllWaypointsPayload::done,
                     SyncAllWaypointsPayload::new);
 
     @Override

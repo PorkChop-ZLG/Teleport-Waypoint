@@ -26,6 +26,7 @@
   "chat.teleportwaypoint.target_missing": "目标传送锚点已不存在。",
   "chat.teleportwaypoint.invalid_dimension": "目标维度无效。",
   "chat.teleportwaypoint.teleport_denied": "传送请求无效。",
+  "chat.teleportwaypoint.teleport_cooldown": "传送过于频繁，请稍后再试。",
 
   "teleportwaypoint.waypoint.empty": "未命名传送锚点",
   "teleportwaypoint.waypoint.village": "村庄",
