@@ -39,14 +39,15 @@ displayName="${mod_name}" #mandatory
 #logoFile="examplemod.png" #optional
 
 # A text field displayed in the mod UI
-#credits="" #optional
+credits="DeepSeek-V4-Flash"
 
 # The authors of the mod, displayed in the mod UI (optional)
-#authors=""
+authors="PorkChop_ZLG"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Example mod description.
+传送锚点，一款类似于传送石碑的模组，会在各种自然结构中生成，同时添加了与Xaero的小地图和Xaero的世界地图之前的深度联动。\n
+Teleport Waypoint – a mod similar to Waystones that generates naturally in various structures, while adding deep integration with Xaero's Minimap and Xaero's World Map.
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
