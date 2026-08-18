@@ -145,6 +145,8 @@ public class TeleportWaypointWorldReader
 
     @Override
     public Tooltip getTooltip(TeleportWaypointElement element, TeleportWaypointContext context, boolean hovered) {
-        return new Tooltip(element.info().displayName());
+        // Names are rendered directly above the icon by TeleportWaypointWorldRenderer,
+        // so no mouse-position tooltip should be shown.
+        return null;
     }
 }

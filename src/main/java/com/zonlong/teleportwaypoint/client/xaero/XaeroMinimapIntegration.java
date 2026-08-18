@@ -26,6 +26,7 @@ import net.neoforged.fml.ModList;
 
 import xaero.common.minimap.waypoints.Waypoint;
 import xaero.hud.minimap.BuiltInHudModules;
+import xaero.hud.minimap.common.config.option.MinimapProfiledConfigOptions;
 import xaero.hud.minimap.module.MinimapSession;
 import xaero.hud.minimap.waypoint.WaypointColor;
 import xaero.hud.minimap.world.MinimapWorldManager;
@@ -87,6 +88,7 @@ public final class XaeroMinimapIntegration {
         if (!initialized) {
             return;
         }
+        syncWaypointNameScaleToDistanceScale();
         if (!ClientWaypointState.isInitialized()) {
             // The paginated snapshot is still in progress; do not render a partial set.
             return;
@@ -137,6 +139,25 @@ public final class XaeroMinimapIntegration {
 
         removeStale(manager, desired);
         addOrUpdate(manager, desired);
+    }
+
+    private static void syncWaypointNameScaleToDistanceScale() {
+        try {
+            if (xaero.common.HudMod.INSTANCE == null) {
+                return;
+            }
+            var configManager = xaero.common.HudMod.INSTANCE.getHudConfigs().getClientConfigManager();
+            var profile = configManager.getCurrentProfile();
+            if (profile == null) {
+                return;
+            }
+            Integer distanceScale = configManager.getEffective(MinimapProfiledConfigOptions.WAYPOINT_DISTANCE_SCALE_IN_WORLD);
+            if (distanceScale != null) {
+                profile.set(MinimapProfiledConfigOptions.WAYPOINT_NAME_SCALE_IN_WORLD, distanceScale);
+            }
+        } catch (Exception e) {
+            TeleportWaypoint.LOGGER.debug("[TeleportWaypoint] Failed to sync Xaero waypoint name scale", e);
+        }
     }
 
     private static boolean shouldRefreshForRange() {

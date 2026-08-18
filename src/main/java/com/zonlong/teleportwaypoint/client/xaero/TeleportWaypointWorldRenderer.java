@@ -1,7 +1,10 @@
 package com.zonlong.teleportwaypoint.client.xaero;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.zonlong.teleportwaypoint.TeleportWaypoint;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.resources.ResourceLocation;
@@ -17,7 +20,8 @@ import xaero.map.graphics.renderer.multitexture.MultiTextureRenderTypeRendererPr
  * Renders teleport waypoint markers on Xaero's world map using dedicated crystal
  * icons: red for inactive regular waypoints, cyan for active regular waypoints,
  * yellow for inactive pocket waypoints and green for active pocket waypoints.
- * Names are intentionally not drawn on the map; hover tooltips show them.
+ * When hovered, the waypoint name is drawn directly above the icon, matching the
+ * native Xaero Waypoint behavior instead of using a mouse-position tooltip.
  */
 public class TeleportWaypointWorldRenderer
         extends ElementRenderer<TeleportWaypointElement, TeleportWaypointContext, TeleportWaypointWorldRenderer> {
@@ -89,7 +93,28 @@ public class TeleportWaypointWorldRenderer
         }
         int half = ICON_SIZE / 2;
         guiGraphics.blit(texture, -half, -half, 0.0F, 0.0F, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+
+        if (hovered) {
+            renderHoverName(guiGraphics, element);
+        }
         return true;
+    }
+
+    private static void renderHoverName(GuiGraphics guiGraphics, TeleportWaypointElement element) {
+        Font font = Minecraft.getInstance().font;
+        String name = element.info().displayName().getString();
+        int nameWidth = font.width(name);
+        int backgroundWidth = Math.max(nameWidth + 4, 12);
+        int halfBackgroundWidth = backgroundWidth / 2;
+
+        PoseStack pose = guiGraphics.pose();
+        pose.pushPose();
+        // Position the label directly above the 32x32 icon (icon top is -16).
+        pose.translate(0.0F, -18.0F, 0.0F);
+        pose.scale(3.0F, 3.0F, 1.0F);
+        guiGraphics.fill(-halfBackgroundWidth, -1, halfBackgroundWidth, 8, 0x80000000);
+        guiGraphics.drawString(font, name, -nameWidth / 2, 0, 0xFFFFFFFF, false);
+        pose.popPose();
     }
 
     @Override
