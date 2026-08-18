@@ -27,6 +27,7 @@ import net.neoforged.fml.ModList;
 import xaero.common.minimap.waypoints.Waypoint;
 import xaero.hud.minimap.BuiltInHudModules;
 import xaero.hud.minimap.common.config.option.MinimapProfiledConfigOptions;
+import xaero.hud.minimap.config.util.MinimapConfigClientUtils;
 import xaero.hud.minimap.module.MinimapSession;
 import xaero.hud.minimap.waypoint.WaypointColor;
 import xaero.hud.minimap.world.MinimapWorldManager;
@@ -151,10 +152,13 @@ public final class XaeroMinimapIntegration {
             if (profile == null) {
                 return;
             }
-            Integer distanceScale = configManager.getEffective(MinimapProfiledConfigOptions.WAYPOINT_DISTANCE_SCALE_IN_WORLD);
-            if (distanceScale != null) {
-                profile.set(MinimapProfiledConfigOptions.WAYPOINT_NAME_SCALE_IN_WORLD, distanceScale);
-            }
+            // Compute the actual effective distance-text scale, then choose a concrete
+            // name-scale value that produces the same rendered size. Copying the raw
+            // config index is not enough: the "auto" name scale uses a 0.5 multiplier.
+            float distanceScale = MinimapConfigClientUtils.getUIScale(
+                    configManager, MinimapProfiledConfigOptions.WAYPOINT_DISTANCE_SCALE_IN_WORLD);
+            int nameValue = Math.max(1, Math.min(16, Math.round(distanceScale)));
+            profile.set(MinimapProfiledConfigOptions.WAYPOINT_NAME_SCALE_IN_WORLD, nameValue);
         } catch (Exception e) {
             TeleportWaypoint.LOGGER.debug("[TeleportWaypoint] Failed to sync Xaero waypoint name scale", e);
         }

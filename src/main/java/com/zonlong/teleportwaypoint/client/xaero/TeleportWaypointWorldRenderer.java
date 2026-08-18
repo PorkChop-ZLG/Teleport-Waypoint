@@ -1,6 +1,7 @@
 package com.zonlong.teleportwaypoint.client.xaero;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.zonlong.teleportwaypoint.TeleportWaypoint;
 
 import net.minecraft.client.Minecraft;
@@ -9,12 +10,16 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.resources.ResourceLocation;
 
+import xaero.map.WorldMap;
 import xaero.map.element.render.ElementRenderInfo;
 import xaero.map.element.render.ElementRenderLocation;
 import xaero.map.element.render.ElementRenderProvider;
 import xaero.map.element.render.ElementReader;
 import xaero.map.element.render.ElementRenderer;
+import xaero.map.graphics.CustomRenderTypes;
+import xaero.map.graphics.MapRenderHelper;
 import xaero.map.graphics.renderer.multitexture.MultiTextureRenderTypeRendererProvider;
+import xaero.map.misc.Misc;
 
 /**
  * Renders teleport waypoint markers on Xaero's world map using dedicated crystal
@@ -27,6 +32,7 @@ public class TeleportWaypointWorldRenderer
         extends ElementRenderer<TeleportWaypointElement, TeleportWaypointContext, TeleportWaypointWorldRenderer> {
 
     private static final int ICON_SIZE = 32;
+    private VertexConsumer textBGConsumer;
     private static final ResourceLocation WAYPOINT_ACTIVE = ResourceLocation.fromNamespaceAndPath(
             TeleportWaypoint.MODID, "textures/gui/waypoint_active.png");
     private static final ResourceLocation WAYPOINT_INACTIVE = ResourceLocation.fromNamespaceAndPath(
@@ -50,6 +56,8 @@ public class TeleportWaypointWorldRenderer
             MultiTextureRenderTypeRendererProvider rendererProvider,
             boolean hovered) {
         getContext().mapDimension = renderInfo.mapDimension;
+        textBGConsumer = WorldMap.worldMapClientOnly.customVertexConsumers.getRenderTypeBuffers()
+                .getBuffer(CustomRenderTypes.MAP_ELEMENT_TEXT_BG);
     }
 
     @Override
@@ -58,6 +66,10 @@ public class TeleportWaypointWorldRenderer
             MultiBufferSource.BufferSource bufferSource,
             MultiTextureRenderTypeRendererProvider rendererProvider,
             boolean hovered) {
+        if (textBGConsumer != null) {
+            WorldMap.worldMapClientOnly.customVertexConsumers.getRenderTypeBuffers().endBatch();
+            textBGConsumer = null;
+        }
     }
 
     @Override
@@ -95,12 +107,13 @@ public class TeleportWaypointWorldRenderer
         guiGraphics.blit(texture, -half, -half, 0.0F, 0.0F, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
 
         if (hovered) {
-            renderHoverName(guiGraphics, element);
+            renderHoverName(guiGraphics, element, bufferSource);
         }
         return true;
     }
 
-    private static void renderHoverName(GuiGraphics guiGraphics, TeleportWaypointElement element) {
+    private void renderHoverName(GuiGraphics guiGraphics, TeleportWaypointElement element,
+                                 MultiBufferSource.BufferSource bufferSource) {
         Font font = Minecraft.getInstance().font;
         String name = element.info().displayName().getString();
         int nameWidth = font.width(name);
@@ -110,10 +123,21 @@ public class TeleportWaypointWorldRenderer
         PoseStack pose = guiGraphics.pose();
         pose.pushPose();
         // Position the label directly above the 32x32 icon (icon top is -16).
-        pose.translate(0.0F, -18.0F, 0.0F);
+        // With a 3x label scale the label body spans ~27px, so move the origin to -45
+        // to keep the label just above the icon without overlapping it.
+        pose.translate(0.0F, -45.0F, 0.0F);
         pose.scale(3.0F, 3.0F, 1.0F);
-        guiGraphics.fill(-halfBackgroundWidth, -1, halfBackgroundWidth, 8, 0x80000000);
-        guiGraphics.drawString(font, name, -nameWidth / 2, 0, 0xFFFFFFFF, false);
+
+        if (textBGConsumer != null) {
+            MapRenderHelper.fillIntoExistingBuffer(
+                    pose.last().pose(), textBGConsumer,
+                    -halfBackgroundWidth, -1, halfBackgroundWidth, 9,
+                    0.0F, 0.0F, 0.0F, 0.7F);
+        }
+        // Push the text slightly forward on z so it is not occluded by the background.
+        pose.translate(0.0F, 0.0F, 1.0F);
+        Misc.drawNormalText(pose, name, -nameWidth / 2, 0, 0xFFFFFFFF, false, bufferSource);
+
         pose.popPose();
     }
 
