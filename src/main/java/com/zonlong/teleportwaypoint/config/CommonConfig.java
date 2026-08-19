@@ -8,6 +8,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  */
 public final class CommonConfig {
     public static final ModConfigSpec.BooleanValue DEFAULT_ENABLE_STRUCTURE_WAYPOINTS;
+    public static final ModConfigSpec.BooleanValue DEFAULT_ENABLE_YUNG_STRUCTURE_WAYPOINTS;
     public static final ModConfigSpec.IntValue TELEPORT_COOLDOWN_TICKS;
     public static final ModConfigSpec SPEC;
 
@@ -18,6 +19,11 @@ public final class CommonConfig {
                 .comment("Whether new worlds enable the vanilla structure override datapack by default.")
                 .translation("teleportwaypoint.configuration.common.defaultEnableStructureWaypoints")
                 .define("defaultEnableStructureWaypoints", true);
+
+        DEFAULT_ENABLE_YUNG_STRUCTURE_WAYPOINTS = builder
+                .comment("Whether new worlds enable the YUNG structure compatibility datapack by default.")
+                .translation("teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints")
+                .define("defaultEnableYungStructureWaypoints", true);
 
         TELEPORT_COOLDOWN_TICKS = builder
                 .comment("Minimum delay in ticks between two teleport requests per player. 0 disables the cooldown.")

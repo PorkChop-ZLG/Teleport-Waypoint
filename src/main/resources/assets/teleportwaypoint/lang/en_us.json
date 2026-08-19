@@ -52,6 +52,8 @@
 
   "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints": "Enable Optional Datapack by Default",
   "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints.tooltip": "Whether new worlds enable the vanilla structure override datapack by default.",
+  "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints": "Enable YUNG Structure Compatibility by Default",
+  "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints.tooltip": "Whether new worlds enable the YUNG structure compatibility datapack by default.",
   "teleportwaypoint.configuration.common.teleportCooldownTicks": "Teleport Cooldown (ticks)",
   "teleportwaypoint.configuration.common.teleportCooldownTicks.tooltip": "Minimum delay in ticks between two teleport requests per player. Set to 0 to disable.",
 
@@ -76,5 +78,7 @@
   "teleportwaypoint.configuration.xaeroworldmap.waypoint.showActive.tooltip": "Toggle display of active waypoints on the world map",
 
   "datapack.teleportwaypoint.vanilla_structure_waypoints.name": "Teleport Waypoint: Vanilla Structure Overrides",
-  "datapack.teleportwaypoint.vanilla_structure_waypoints.description": "Adds teleport waypoints to selected vanilla structures"
+  "datapack.teleportwaypoint.vanilla_structure_waypoints.description": "Adds teleport waypoints to selected vanilla structures",
+  "datapack.teleportwaypoint.yung_structure_waypoints.name": "Teleport Waypoint: YUNG Structure Compatibility",
+  "datapack.teleportwaypoint.yung_structure_waypoints.description": "Adds teleport waypoints to YUNG's structure enhancement mods"
 }

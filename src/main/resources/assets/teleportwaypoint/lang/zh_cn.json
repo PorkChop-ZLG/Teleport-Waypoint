@@ -52,6 +52,8 @@
 
   "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints": "默认启用可选数据包",
   "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints.tooltip": "新世界是否默认启用原版结构覆盖数据包。",
+  "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints": "默认启用 YUNG 结构兼容",
+  "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints.tooltip": "新世界是否默认启用 YUNG 结构兼容数据包。",
   "teleportwaypoint.configuration.common.teleportCooldownTicks": "传送冷却（tick）",
   "teleportwaypoint.configuration.common.teleportCooldownTicks.tooltip": "两次传送请求之间的最小间隔（tick）。设为 0 可关闭冷却。",
 
@@ -76,5 +78,7 @@
   "teleportwaypoint.configuration.xaeroworldmap.waypoint.showActive.tooltip": "是否显示 已激活 的传送锚点（世界地图）",
 
   "datapack.teleportwaypoint.vanilla_structure_waypoints.name": "传送锚点：原版结构覆盖",
-  "datapack.teleportwaypoint.vanilla_structure_waypoints.description": "为Minecraft原版的部分结构添加传送锚点"
+  "datapack.teleportwaypoint.vanilla_structure_waypoints.description": "为Minecraft原版的部分结构添加传送锚点",
+  "datapack.teleportwaypoint.yung_structure_waypoints.name": "传送锚点：YUNG 结构兼容",
+  "datapack.teleportwaypoint.yung_structure_waypoints.description": "为 YUNG 的结构优化模组添加传送锚点"
 }

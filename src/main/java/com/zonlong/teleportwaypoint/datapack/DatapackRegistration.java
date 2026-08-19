@@ -12,16 +12,21 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.AddPackFindersEvent;
 
 /**
- * Registers the optional "vanilla structure waypoints" datapack.
+ * Registers optional structure-compatibility datapacks.
  *
- * <p>The datapack overrides selected vanilla structure NBT files to add teleport
- * waypoints. It is enabled by default in new worlds when
- * {@link CommonConfig#DEFAULT_ENABLE_STRUCTURE_WAYPOINTS} is true, but remains
- * optional so players can disable it from the world datapack screen.
+ * <p>Two datapacks are provided:
+ * <ul>
+ *   <li>"vanilla structure waypoints" overrides selected vanilla structure NBT files;</li>
+ *   <li>"YUNG structure waypoints" overrides entry NBT files from YUNG's structure enhancement mods.</li>
+ * </ul>
+ * Both are enabled by default in new worlds according to their Common config options,
+ * but remain optional so players can disable them from the world datapack screen.
  */
 public final class DatapackRegistration {
-    private static final String DATAPACK_PATH =
+    private static final String VANILLA_DATAPACK_PATH =
             "data/teleportwaypoint/datapacks/vanilla_structure_waypoints";
+    private static final String YUNG_DATAPACK_PATH =
+            "data/teleportwaypoint/datapacks/yung_structure_waypoints";
 
     private DatapackRegistration() {
     }
@@ -32,13 +37,26 @@ public final class DatapackRegistration {
             return;
         }
 
-        boolean defaultEnable = CommonConfig.DEFAULT_ENABLE_STRUCTURE_WAYPOINTS.get();
-        PackSource packSource = defaultEnable ? PackSource.BUILT_IN : PackSource.FEATURE;
+        registerPack(
+                event,
+                VANILLA_DATAPACK_PATH,
+                "datapack.teleportwaypoint.vanilla_structure_waypoints.name",
+                CommonConfig.DEFAULT_ENABLE_STRUCTURE_WAYPOINTS.get()
+        );
+        registerPack(
+                event,
+                YUNG_DATAPACK_PATH,
+                "datapack.teleportwaypoint.yung_structure_waypoints.name",
+                CommonConfig.DEFAULT_ENABLE_YUNG_STRUCTURE_WAYPOINTS.get()
+        );
+    }
 
+    private static void registerPack(AddPackFindersEvent event, String path, String nameKey, boolean defaultEnable) {
+        PackSource packSource = defaultEnable ? PackSource.BUILT_IN : PackSource.FEATURE;
         event.addPackFinders(
-                ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, DATAPACK_PATH),
+                ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, path),
                 PackType.SERVER_DATA,
-                Component.translatable("datapack.teleportwaypoint.vanilla_structure_waypoints.name"),
+                Component.translatable(nameKey),
                 packSource,
                 false,
                 Pack.Position.TOP
