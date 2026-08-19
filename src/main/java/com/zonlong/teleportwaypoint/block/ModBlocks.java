@@ -11,7 +11,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public class ModBlocks {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(TeleportWaypoint.MODID);
 
-    // Breakable waypoint with obsidian hardness/resistance and no drops.
+    // Breakable waypoint with obsidian hardness/resistance; requires a diamond pickaxe (obsidian-like), no drops.
     public static final DeferredBlock<WaypointBlock> WAYPOINT = BLOCKS.register("waypoint",
             () -> new WaypointBlock(BlockBehaviour.Properties.of()
                     .strength(50.0F, 1200.0F)

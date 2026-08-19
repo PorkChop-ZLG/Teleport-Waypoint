@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
+    "teleportwaypoint:waypoint",
     "teleportwaypoint:pocket_waypoint"
   ]
 }
