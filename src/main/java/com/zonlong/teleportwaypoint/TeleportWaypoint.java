@@ -5,10 +5,10 @@ import org.slf4j.Logger;
 import com.mojang.logging.LogUtils;
 import com.zonlong.teleportwaypoint.block.ModBlocks;
 import com.zonlong.teleportwaypoint.block.entity.ModBlockEntities;
-import com.zonlong.teleportwaypoint.config.ClientConfig;
-import com.zonlong.teleportwaypoint.config.ServerConfig;
+import com.zonlong.teleportwaypoint.config.CommonConfig;
 import com.zonlong.teleportwaypoint.config.XaeroMinimapConfig;
 import com.zonlong.teleportwaypoint.config.XaeroWorldMapConfig;
+import com.zonlong.teleportwaypoint.datapack.DatapackRegistration;
 import com.zonlong.teleportwaypoint.item.ModItems;
 import com.zonlong.teleportwaypoint.menu.ModMenus;
 import com.zonlong.teleportwaypoint.network.ModNetwork;
@@ -30,9 +30,9 @@ public class TeleportWaypoint {
         ModItems.CREATIVE_MODE_TABS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
         modEventBus.addListener(ModNetwork::register);
+        modEventBus.addListener(DatapackRegistration::onAddPackFinders);
 
-        modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC, "teleportwaypoint/client.toml");
-        modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC, "teleportwaypoint/server.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, CommonConfig.SPEC, "teleportwaypoint/common.toml");
         modContainer.registerConfig(ModConfig.Type.CLIENT, XaeroMinimapConfig.SPEC, "teleportwaypoint/xaero-minimap.toml");
         modContainer.registerConfig(ModConfig.Type.CLIENT, XaeroWorldMapConfig.SPEC, "teleportwaypoint/xaero-worldmap.toml");
     }

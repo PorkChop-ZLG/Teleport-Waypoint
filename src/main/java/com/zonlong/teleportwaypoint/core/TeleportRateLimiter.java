@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.zonlong.teleportwaypoint.config.ServerConfig;
+import com.zonlong.teleportwaypoint.config.CommonConfig;
 
 /**
  * Server-side per-player cooldown for teleport requests. Shared by the in-game
@@ -20,7 +20,7 @@ public final class TeleportRateLimiter {
      * Returns true if the player may teleport now, false if they must wait.
      */
     public static boolean tryAcquire(UUID playerId) {
-        long cooldownMs = ServerConfig.TELEPORT_COOLDOWN_TICKS.get() * 50L;
+        long cooldownMs = CommonConfig.TELEPORT_COOLDOWN_TICKS.get() * 50L;
         if (cooldownMs <= 0) {
             return true;
         }

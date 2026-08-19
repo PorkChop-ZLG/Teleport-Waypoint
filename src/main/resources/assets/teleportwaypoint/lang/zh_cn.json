@@ -31,22 +31,29 @@
   "teleportwaypoint.waypoint.empty": "未命名传送锚点",
   "teleportwaypoint.waypoint.village": "村庄",
   "teleportwaypoint.waypoint.trial_chambers": "试炼密室",
+  "teleportwaypoint.waypoint.ancient_city": "远古城市",
+  "teleportwaypoint.waypoint.bastion_remnant": "堡垒遗迹",
+  "teleportwaypoint.waypoint.end_city": "末地城",
+  "teleportwaypoint.waypoint.nether_fortress": "下界要塞",
+  "teleportwaypoint.waypoint.woodland_mansion": "林地府邸",
+  "teleportwaypoint.waypoint.ocean_monument": "海底神殿",
+  "teleportwaypoint.waypoint.stronghold": "要塞",
+  "teleportwaypoint.waypoint.desert_pyramid": "沙漠神殿",
+  "teleportwaypoint.waypoint.igloo": "雪屋",
+  "teleportwaypoint.waypoint.jungle_temple": "丛林神庙",
 
   "teleportwaypoint.configuration.title": "传送锚点配置",
-  "teleportwaypoint.configuration.section.teleportwaypoint.client.toml": "客户端",
-  "teleportwaypoint.configuration.section.teleportwaypoint.client.toml.title": "客户端配置",
-  "teleportwaypoint.configuration.section.teleportwaypoint.server.toml": "服务端",
-  "teleportwaypoint.configuration.section.teleportwaypoint.server.toml.title": "服务端配置",
+  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml": "通用",
+  "teleportwaypoint.configuration.section.teleportwaypoint.common.toml.title": "通用配置",
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.minimap.toml": "Xaero 小地图",
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.minimap.toml.title": "Xaero 小地图联动",
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.worldmap.toml": "Xaero 世界地图",
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.worldmap.toml.title": "Xaero 世界地图联动",
 
-  "teleportwaypoint.configuration.client.placeholder": "占位选项",
-  "teleportwaypoint.configuration.client.placeholder.tooltip": "保留给未来的客户端选项。",
-
-  "teleportwaypoint.configuration.server.teleportCooldownTicks": "传送冷却（tick）",
-  "teleportwaypoint.configuration.server.teleportCooldownTicks.tooltip": "两次传送请求之间的最小间隔（tick）。设为 0 可关闭冷却。",
+  "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints": "默认启用原版结构传送锚点",
+  "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints.tooltip": "新世界是否默认启用原版结构覆盖数据包。",
+  "teleportwaypoint.configuration.common.teleportCooldownTicks": "传送冷却（tick）",
+  "teleportwaypoint.configuration.common.teleportCooldownTicks.tooltip": "两次传送请求之间的最小间隔（tick）。设为 0 可关闭冷却。",
 
   "teleportwaypoint.configuration.xaerominimap.showWaypoints": "显示锚点",
   "teleportwaypoint.configuration.xaerominimap.showWaypoints.tooltip": "是否在 Xaero的小地图 上显示传送锚点和口袋锚点。",
@@ -66,5 +73,8 @@
   "teleportwaypoint.configuration.xaeroworldmap.waypoint.showInactive": "显示未激活",
   "teleportwaypoint.configuration.xaeroworldmap.waypoint.showInactive.tooltip": "是否显示 未激活 的传送锚点（世界地图）",
   "teleportwaypoint.configuration.xaeroworldmap.waypoint.showActive": "显示已激活",
-  "teleportwaypoint.configuration.xaeroworldmap.waypoint.showActive.tooltip": "是否显示 已激活 的传送锚点（世界地图）"
+  "teleportwaypoint.configuration.xaeroworldmap.waypoint.showActive.tooltip": "是否显示 已激活 的传送锚点（世界地图）",
+
+  "datapack.teleportwaypoint.vanilla_structure_waypoints.name": "传送锚点：原版结构覆盖",
+  "datapack.teleportwaypoint.vanilla_structure_waypoints.description": "为Minecraft原版的部分结构添加传送锚点"
 }
