@@ -1,6 +1,9 @@
 {
   "variants": {
-    "": {
+    "waterlogged=false": {
+      "model": "teleportwaypoint:block/waypoint"
+    },
+    "waterlogged=true": {
       "model": "teleportwaypoint:block/waypoint"
     }
   }
