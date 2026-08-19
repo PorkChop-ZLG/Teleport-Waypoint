@@ -50,10 +50,10 @@
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.worldmap.toml": "Xaero's World Map - Integration Config",
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.worldmap.toml.title": "Xaero's World Map Integration",
 
-  "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints": "Enable Optional Datapack by Default",
-  "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints.tooltip": "Whether new worlds enable the vanilla structure override datapack by default.",
-  "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints": "Enable YUNG Structure Compatibility by Default",
-  "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints.tooltip": "Whether new worlds enable the YUNG structure compatibility datapack by default.",
+  "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints": "Enable Vanilla Structure Datapack by Default",
+  "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints.tooltip": "Whether new worlds enable the vanilla structure datapack by default.",
+  "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints": "Enable YUNG Structure Datapack by Default",
+  "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints.tooltip": "Whether new worlds enable the YUNG structure datapack by default.",
   "teleportwaypoint.configuration.common.teleportCooldownTicks": "Teleport Cooldown (ticks)",
   "teleportwaypoint.configuration.common.teleportCooldownTicks.tooltip": "Minimum delay in ticks between two teleport requests per player. Set to 0 to disable.",
 
