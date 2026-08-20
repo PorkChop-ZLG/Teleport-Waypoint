@@ -24,7 +24,7 @@ public final class WaypointEvents {
     @SubscribeEvent
     public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            WaypointManager.syncDimensionTo(player);
+            WaypointManager.syncDimensionTo(player, event.getTo());
         }
     }
 

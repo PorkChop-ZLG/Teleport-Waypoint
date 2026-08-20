@@ -12,12 +12,13 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * S→C: a full snapshot of all waypoint data the client should hold for one
- * dimension. For the current dimension this contains every normal waypoint plus
- * every pocket waypoint the receiving player has activated.
+ * S→C: one page of a full waypoint snapshot for one dimension. For the current
+ * dimension this contains every normal waypoint plus every pocket waypoint the
+ * receiving player has activated. The client accumulates pages until {@code done}
+ * is true.
  */
-public record SyncDimensionWaypointsPayload(ResourceLocation dimension, List<WaypointSyncInfo> waypoints) implements CustomPacketPayload {
-    public static final int MAX_DIMENSION_SYNC = 100_000;
+public record SyncDimensionWaypointsPayload(ResourceLocation dimension, List<WaypointSyncInfo> waypoints, int page, boolean done) implements CustomPacketPayload {
+    public static final int MAX_PAGE_SIZE = 500;
 
     public static final Type<SyncDimensionWaypointsPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, "sync_dimension_waypoints"));
@@ -25,8 +26,10 @@ public record SyncDimensionWaypointsPayload(ResourceLocation dimension, List<Way
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncDimensionWaypointsPayload> STREAM_CODEC =
             StreamCodec.composite(
                     ResourceLocation.STREAM_CODEC, SyncDimensionWaypointsPayload::dimension,
-                    ByteBufCodecs.collection(ArrayList::new, WaypointSyncInfo.STREAM_CODEC, MAX_DIMENSION_SYNC),
+                    ByteBufCodecs.collection(ArrayList::new, WaypointSyncInfo.STREAM_CODEC, MAX_PAGE_SIZE),
                     SyncDimensionWaypointsPayload::waypoints,
+                    ByteBufCodecs.VAR_INT, SyncDimensionWaypointsPayload::page,
+                    ByteBufCodecs.BOOL, SyncDimensionWaypointsPayload::done,
                     SyncDimensionWaypointsPayload::new);
 
     @Override

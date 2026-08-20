@@ -14,6 +14,7 @@ import net.neoforged.fml.ModList;
 public final class XaeroIntegrationLoader {
     private static final String INTEGRATION_CLASS = "com.zonlong.teleportwaypoint.client.xaero.XaeroIntegration";
     private static Method tickMethod;
+    private static Method resetMethod;
     private static boolean attempted;
 
     private XaeroIntegrationLoader() {
@@ -43,6 +44,26 @@ public final class XaeroIntegrationLoader {
         } catch (ReflectiveOperationException e) {
             TeleportWaypoint.LOGGER.warn("[TeleportWaypoint] Failed to invoke Xaero integration", e);
             attempted = true;
+        }
+    }
+
+    public static void reset() {
+        if (tickMethod == null && attempted) {
+            // Xaero is not available or already failed to load; nothing to reset.
+            return;
+        }
+        if (resetMethod == null) {
+            try {
+                resetMethod = Class.forName(INTEGRATION_CLASS).getMethod("reset");
+            } catch (ReflectiveOperationException e) {
+                TeleportWaypoint.LOGGER.debug("[TeleportWaypoint] Xaero integration reset unavailable", e);
+                return;
+            }
+        }
+        try {
+            resetMethod.invoke(null);
+        } catch (ReflectiveOperationException e) {
+            TeleportWaypoint.LOGGER.debug("[TeleportWaypoint] Failed to reset Xaero integration", e);
         }
     }
 }

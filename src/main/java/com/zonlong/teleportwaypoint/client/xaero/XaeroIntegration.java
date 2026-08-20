@@ -22,4 +22,10 @@ public final class XaeroIntegration {
             XaeroMinimapIntegration.sync();
         }
     }
+
+    public static void reset() {
+        if (ModList.get().isLoaded("xaerominimap")) {
+            XaeroMinimapIntegration.reset();
+        }
+    }
 }

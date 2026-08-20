@@ -17,9 +17,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
 /**
- * Client-side copy of all known waypoints plus the local player's activated set.
- * Kept in sync by the snapshot and incremental payloads. Used by the in-game GUI,
- * the BER state colors, and the optional Xaero map integrations.
+ * Client-side waypoint state: full waypoint data for the current dimension plus
+ * the local player's activated metadata across all dimensions. Kept in sync by
+ * dimension snapshots and incremental payloads. Used by the in-game GUI, the BER
+ * state colors, and the optional Xaero map integrations.
  */
 public final class ClientWaypointState {
     private static Map<UUID, ClientWaypointInfo> waypoints = Map.of();
@@ -41,10 +42,12 @@ public final class ClientWaypointState {
         return initialized;
     }
 
-    /** Applies one page of the full snapshot; resets on page 0 and flushes queued increments when done. */
-    public static void applySnapshot(List<WaypointSyncInfo> infos, int page, boolean done) {
+    /** Applies one page of the current dimension snapshot; resets on page 0 and flushes queued increments when done. */
+    public static void applyDimensionSnapshot(ResourceLocation dimension, List<WaypointSyncInfo> infos, int page, boolean done) {
+        ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, dimension);
         if (page == 0) {
-            // A new snapshot invalidates any previous partial state and queued increments.
+            // A new dimension snapshot invalidates any previous partial state and queued increments.
+            currentDimension = dim;
             initialized = false;
             pending.clear();
             waypoints = Map.of();
@@ -57,22 +60,9 @@ public final class ClientWaypointState {
         if (done) {
             initialized = true;
             revision++;
+            syncActivatedNamesFromWaypoints();
             flushPending();
         }
-    }
-
-    /** Replaces the complete waypoint data with the current dimension's snapshot. */
-    public static void applyDimensionSnapshot(ResourceLocation dimension, List<WaypointSyncInfo> infos) {
-        ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, dimension);
-        Map<UUID, ClientWaypointInfo> map = new HashMap<>();
-        for (WaypointSyncInfo info : infos) {
-            map.put(info.uid(), toClientInfo(info));
-        }
-        waypoints = Map.copyOf(map);
-        currentDimension = dim;
-        initialized = true;
-        revision++;
-        flushPending();
     }
 
     public static void applyAdd(WaypointSyncInfo info) {
@@ -165,15 +155,20 @@ public final class ClientWaypointState {
         revision++;
     }
 
-    public static void setAllWaypoints(List<WaypointSyncInfo> infos) {
-        Map<UUID, ClientWaypointInfo> map = new HashMap<>();
-        for (WaypointSyncInfo info : infos) {
-            map.put(info.uid(), toClientInfo(info));
+    private static void syncActivatedNamesFromWaypoints() {
+        boolean changed = false;
+        List<ActivatedWaypointInfo> list = new ArrayList<>(activated);
+        for (int i = 0; i < list.size(); i++) {
+            ActivatedWaypointInfo activatedInfo = list.get(i);
+            ClientWaypointInfo full = waypoints.get(activatedInfo.uid());
+            if (full != null && !full.name().equals(activatedInfo.name())) {
+                list.set(i, new ActivatedWaypointInfo(activatedInfo.uid(), full.pocket(), full.name()));
+                changed = true;
+            }
         }
-        waypoints = Map.copyOf(map);
-        initialized = true;
-        flushPending();
-        revision++;
+        if (changed) {
+            activated = List.copyOf(list);
+        }
     }
 
     public static List<ClientWaypointInfo> getWaypoints() {

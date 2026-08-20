@@ -44,6 +44,7 @@ public class TeleportWaypointClient {
 
     private static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         ClientWaypointState.reset();
+        XaeroIntegrationLoader.reset();
     }
 
     static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {

@@ -14,7 +14,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 public class ModNetwork {
 
     public static void register(final RegisterPayloadHandlersEvent event) {
-        final PayloadRegistrar registrar = event.registrar("2");
+        final PayloadRegistrar registrar = event.registrar("3");
 
         registrar.playToClient(
                 SyncActivatedWaypointsPayload.TYPE,
@@ -82,7 +82,7 @@ public class ModNetwork {
     }
 
     private static void handleSyncDimensionWaypoints(final SyncDimensionWaypointsPayload payload, final IPayloadContext context) {
-        context.enqueueWork(() -> ClientWaypointState.applyDimensionSnapshot(payload.dimension(), payload.waypoints()));
+        context.enqueueWork(() -> ClientWaypointState.applyDimensionSnapshot(payload.dimension(), payload.waypoints(), payload.page(), payload.done()));
     }
 
     private static void handleAddWaypoint(final AddWaypointPayload payload, final IPayloadContext context) {

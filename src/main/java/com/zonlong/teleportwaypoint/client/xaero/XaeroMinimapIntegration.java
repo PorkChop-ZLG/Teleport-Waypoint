@@ -153,6 +153,23 @@ public final class XaeroMinimapIntegration {
         addOrUpdate(manager, desired);
     }
 
+    public static void reset() {
+        UID_TO_ID.clear();
+        ID_TO_UID.clear();
+        ID_TO_WAYPOINT.clear();
+        OWNED.clear();
+        lastRevision = -1;
+        lastShowWaypoints = true;
+        lastShowInactiveWaypoints = true;
+        lastShowActiveWaypoints = true;
+        lastRange = 256;
+        lastAppliedNameScale = -1;
+        lastPlayerDimension = null;
+        lastPlayerPos = null;
+        initialized = false;
+        minimapRegistered = false;
+    }
+
     private static void syncWaypointNameScaleToDistanceScale() {
         try {
             if (xaero.common.HudMod.INSTANCE == null) {
