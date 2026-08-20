@@ -50,6 +50,8 @@
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.worldmap.toml": "Xaero的世界地图 - 联动配置",
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.worldmap.toml.title": "Xaero的世界地图联动",
 
+  "teleportwaypoint.configuration.common.optionalDataPacks": "可选数据包",
+  "teleportwaypoint.configuration.common.optionalDataPacks.tooltip": "控制原版结构与YUNG结构兼容数据包在新世界是否默认启用。",
   "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints": "默认启用原版结构数据包",
   "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints.tooltip": "新世界是否默认启用原版结构覆盖数据包。",
   "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints": "默认启用YUNG结构数据包",

@@ -255,15 +255,16 @@ Teleport Waypoint（传送锚点）是一个 Minecraft NeoForge 模组。玩家�
 
 | 文件 | 内容 |
 |---|---|
-| `common.toml` | 传送冷却、结构数据包默认开关 |
+| `common.toml` | 传送冷却、可选数据包（原版/YUNG 默认开关） |
 | `xaero-minimap.toml` | Xaero 小地图联动配置 |
 | `xaero-worldmap.toml` | Xaero 世界地图联动配置 |
 
 ### 11.1 通用配置
 
 - `teleportCooldownTicks`：传送冷却（tick），默认 20。
-- `defaultEnableStructureWaypoints`：新世界默认启用原版结构数据包。
-- `defaultEnableYungStructureWaypoints`：新世界默认启用 YUNG 结构数据包。
+- `可选数据包` 分组：
+  - `defaultEnableStructureWaypoints`：新世界默认启用原版结构数据包。
+  - `defaultEnableYungStructureWaypoints`：新世界默认启用 YUNG 结构数据包。
 
 ### 11.2 Xaero 小地图
 

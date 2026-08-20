@@ -50,6 +50,8 @@
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.worldmap.toml": "Xaero's World Map - Integration Config",
   "teleportwaypoint.configuration.section.teleportwaypoint.xaero.worldmap.toml.title": "Xaero's World Map Integration",
 
+  "teleportwaypoint.configuration.common.optionalDataPacks": "Optional Data Packs",
+  "teleportwaypoint.configuration.common.optionalDataPacks.tooltip": "Controls whether the vanilla and YUNG structure datapacks are enabled by default in new worlds.",
   "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints": "Enable Vanilla Structure Datapack by Default",
   "teleportwaypoint.configuration.common.defaultEnableStructureWaypoints.tooltip": "Whether new worlds enable the vanilla structure datapack by default.",
   "teleportwaypoint.configuration.common.defaultEnableYungStructureWaypoints": "Enable YUNG Structure Datapack by Default",

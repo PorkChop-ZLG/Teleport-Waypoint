@@ -18,7 +18,8 @@ public class ModBlocks {
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.GLASS)
                     .noLootTable()
-                    .noOcclusion()));
+                    .noOcclusion()
+                    .lightLevel(state -> 14)));
 
     // Breakable pocket waypoint: stone hardness, obsidian blast resistance, requires a pickaxe, drops itself.
     public static final DeferredBlock<PocketWaypointBlock> POCKET_WAYPOINT = BLOCKS.register("pocket_waypoint",
@@ -26,5 +27,6 @@ public class ModBlocks {
                     .strength(1.5F, 1200.0F)
                     .requiresCorrectToolForDrops()
                     .sound(SoundType.GLASS)
-                    .noOcclusion()));
+                    .noOcclusion()
+                    .lightLevel(state -> 14)));
 }

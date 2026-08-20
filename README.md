@@ -183,7 +183,7 @@ src/main/java/com/zonlong/teleportwaypoint/
   - 第二行：坐标（仅展示）；
   - 第三行：传送（已激活可点击，未激活不可用）。
 - 配置文件位于 `config/teleportwaypoint/`：
-  - `common.toml`：通用配置（传送冷却、结构数据包默认开关）
+  - `common.toml`：通用配置（传送冷却、可选数据包分组：原版/YUNG 默认开关）
   - `xaero-minimap.toml`：Xaero 小地图联动配置
   - `xaero-worldmap.toml`：Xaero 世界地图联动配置
 - 小地图与世界地图各自独立控制：
