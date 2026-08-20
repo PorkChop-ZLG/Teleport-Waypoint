@@ -1,6 +1,6 @@
 ID,严重级别,类别,状态,位置,标题,建议
 H-1,高,数据丢失,设计如此不修复,src/main/resources/data/teleportwaypoint/loot_table/blocks/pocket_waypoint.json; src/main/java/com/zonlong/teleportwaypoint/block/PocketWaypointBlock.java; src/main/java/com/zonlong/teleportwaypoint/block/entity/WaypointBlockEntity.java,口袋锚点破坏掉落丢失 owner/name/uid,掉落物不保留锚点数据为设计行为
-H-2,高,隐私/安全,暂不修复,src/main/java/com/zonlong/teleportwaypoint/core/WaypointManager.java,所有客户端收到全部口袋锚点数据,后续对数据同步做更深入优化
+H-2,高,隐私/安全,已修复,src/main/java/com/zonlong/teleportwaypoint/core/WaypointManager.java; src/main/java/com/zonlong/teleportwaypoint/network/ModNetwork.java; src/main/java/com/zonlong/teleportwaypoint/client/ClientWaypointState.java,所有客户端收到全部口袋锚点数据,已改为按维度同步；口袋锚点仅同步已激活的，普通锚点按当前维度全量同步
 H-3,高,正确性,已修复,src/main/java/com/zonlong/teleportwaypoint/client/xaero/TeleportWaypointWorldRenderer.java,世界地图缺少 shouldBeDimScaled=false 导致下界/末地坐标偏移,已增加 shouldBeDimScaled() 返回 false
 H-4,高,正确性,已修复,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java,Xaero 小地图未按当前维度隔离导致跨维度显示主世界锚点,已在 sync() 中按当前玩家维度过滤并使用单一 MINIMAP_KEY
 M-1,中,性能,已修复,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java; src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroWorldMapIntegration.java,Xaero 配置每 tick 写入,已增加缓存，仅在值变化时写入

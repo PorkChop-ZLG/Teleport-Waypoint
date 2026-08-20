@@ -47,7 +47,7 @@
 
 ### H-2 所有客户端都会收到全部口袋锚点数据（隐私泄露）
 
-- **状态**：暂不修复，后续对数据同步做更深入优化
+- **状态**：已修复（按维度同步重构，仅同步已激活口袋锚点）
 
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/core/WaypointManager.java`

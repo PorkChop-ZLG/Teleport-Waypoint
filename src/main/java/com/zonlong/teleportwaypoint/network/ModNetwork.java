@@ -22,9 +22,9 @@ public class ModNetwork {
                 ModNetwork::handleSyncActivated);
 
         registrar.playToClient(
-                SyncAllWaypointsPayload.TYPE,
-                SyncAllWaypointsPayload.STREAM_CODEC,
-                ModNetwork::handleSyncAllWaypoints);
+                SyncDimensionWaypointsPayload.TYPE,
+                SyncDimensionWaypointsPayload.STREAM_CODEC,
+                ModNetwork::handleSyncDimensionWaypoints);
 
         registrar.playToClient(
                 AddWaypointPayload.TYPE,
@@ -81,8 +81,8 @@ public class ModNetwork {
         context.enqueueWork(() -> ClientWaypointState.setActivated(payload.waypoints()));
     }
 
-    private static void handleSyncAllWaypoints(final SyncAllWaypointsPayload payload, final IPayloadContext context) {
-        context.enqueueWork(() -> ClientWaypointState.applySnapshot(payload.waypoints(), payload.page(), payload.done()));
+    private static void handleSyncDimensionWaypoints(final SyncDimensionWaypointsPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> ClientWaypointState.applyDimensionSnapshot(payload.dimension(), payload.waypoints()));
     }
 
     private static void handleAddWaypoint(final AddWaypointPayload payload, final IPayloadContext context) {

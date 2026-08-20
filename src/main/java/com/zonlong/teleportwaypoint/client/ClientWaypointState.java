@@ -11,7 +11,9 @@ import java.util.UUID;
 import com.zonlong.teleportwaypoint.network.ActivatedWaypointInfo;
 import com.zonlong.teleportwaypoint.network.WaypointSyncInfo;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
 /**
@@ -23,6 +25,7 @@ public final class ClientWaypointState {
     private static Map<UUID, ClientWaypointInfo> waypoints = Map.of();
     private static List<ActivatedWaypointInfo> activated = List.of();
     private static Set<UUID> activatedUids = Set.of();
+    private static ResourceKey<Level> currentDimension;
     private static int revision;
     private static boolean initialized;
     private static final List<Runnable> pending = new ArrayList<>();
@@ -58,9 +61,27 @@ public final class ClientWaypointState {
         }
     }
 
+    /** Replaces the complete waypoint data with the current dimension's snapshot. */
+    public static void applyDimensionSnapshot(ResourceLocation dimension, List<WaypointSyncInfo> infos) {
+        ResourceKey<Level> dim = ResourceKey.create(Registries.DIMENSION, dimension);
+        Map<UUID, ClientWaypointInfo> map = new HashMap<>();
+        for (WaypointSyncInfo info : infos) {
+            map.put(info.uid(), toClientInfo(info));
+        }
+        waypoints = Map.copyOf(map);
+        currentDimension = dim;
+        initialized = true;
+        revision++;
+        flushPending();
+    }
+
     public static void applyAdd(WaypointSyncInfo info) {
         if (!initialized) {
             pending.add(() -> applyAdd(info));
+            return;
+        }
+        ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, info.dimension());
+        if (!dimension.equals(currentDimension)) {
             return;
         }
         Map<UUID, ClientWaypointInfo> map = new HashMap<>(waypoints);
@@ -74,9 +95,12 @@ public final class ClientWaypointState {
             pending.add(() -> applyUpdate(info));
             return;
         }
-        Map<UUID, ClientWaypointInfo> map = new HashMap<>(waypoints);
-        map.put(info.uid(), toClientInfo(info));
-        waypoints = Map.copyOf(map);
+        ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, info.dimension());
+        if (dimension.equals(currentDimension)) {
+            Map<UUID, ClientWaypointInfo> map = new HashMap<>(waypoints);
+            map.put(info.uid(), toClientInfo(info));
+            waypoints = Map.copyOf(map);
+        }
 
         // Keep activated-list display names in sync for every player who has this waypoint activated.
         List<ActivatedWaypointInfo> list = new ArrayList<>(activated);
@@ -198,6 +222,17 @@ public final class ClientWaypointState {
             set.remove(uid);
             activatedUids = Set.copyOf(set);
         }
+        revision++;
+    }
+
+    /** Clears all cached state, e.g. when leaving a server. */
+    public static void reset() {
+        waypoints = Map.of();
+        activated = List.of();
+        activatedUids = Set.of();
+        currentDimension = null;
+        initialized = false;
+        pending.clear();
         revision++;
     }
 

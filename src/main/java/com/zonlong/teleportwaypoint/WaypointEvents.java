@@ -16,8 +16,15 @@ public final class WaypointEvents {
     @SubscribeEvent
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            WaypointManager.syncAllTo(player);
             WaypointManager.syncTo(player);
+            WaypointManager.syncDimensionTo(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            WaypointManager.syncDimensionTo(player);
         }
     }
 
