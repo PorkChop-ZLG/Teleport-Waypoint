@@ -20,6 +20,7 @@ import xaero.map.WorldMap;
 public final class XaeroWorldMapIntegration {
     private static boolean worldMapRegistered;
     private static boolean configAttempted;
+    private static Boolean lastMirroredShowWaypoints;
 
     private static ConfigOption<Boolean> xaeroShowWaypoints;
 
@@ -67,7 +68,11 @@ public final class XaeroWorldMapIntegration {
             var configManager = WorldMap.INSTANCE.getConfigs().getClientConfigManager();
             var profile = configManager.getCurrentProfile();
             if (profile != null) {
-                profile.set(xaeroShowWaypoints, XaeroWorldMapConfig.SHOW_WAYPOINTS.get());
+                boolean showWaypoints = XaeroWorldMapConfig.SHOW_WAYPOINTS.get();
+                if (lastMirroredShowWaypoints == null || lastMirroredShowWaypoints != showWaypoints) {
+                    profile.set(xaeroShowWaypoints, showWaypoints);
+                    lastMirroredShowWaypoints = showWaypoints;
+                }
             }
         } catch (Exception e) {
             TeleportWaypoint.LOGGER.debug("[TeleportWaypoint] Failed to mirror config into Xaero World Map", e);

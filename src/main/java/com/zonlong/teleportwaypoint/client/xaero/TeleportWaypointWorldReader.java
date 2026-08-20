@@ -119,13 +119,11 @@ public class TeleportWaypointWorldReader
     public ArrayList<RightClickOption> getRightClickOptions(TeleportWaypointElement element, IRightClickableElement target) {
         ArrayList<RightClickOption> options = new ArrayList<>();
 
-        String name = Component.translatable("gui.teleportwaypoint.map_menu_name",
-                element.info().displayName().getString()).getString();
-        options.add(new TeleportWaypointInfoOption(name, options.size(), target));
+        options.add(new TeleportWaypointInfoOption("gui.teleportwaypoint.map_menu_name", options.size(), target)
+                .setNameFormatArgs(element.info().displayName().getString()));
 
-        String coords = Component.translatable("gui.teleportwaypoint.map_coords",
-                element.getX(), element.getY(), element.getZ()).getString();
-        options.add(new TeleportWaypointInfoOption(coords, options.size(), target));
+        options.add(new TeleportWaypointInfoOption("gui.teleportwaypoint.map_coords", options.size(), target)
+                .setNameFormatArgs(element.getX(), element.getY(), element.getZ()));
 
         TeleportRightClickOption teleport = new TeleportRightClickOption(
                 element.uid(),

@@ -6,13 +6,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import com.zonlong.teleportwaypoint.TeleportWaypoint;
+
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.saveddata.SavedData;
 
 /**
@@ -27,7 +28,7 @@ public class PlayerWaypointData extends SavedData {
 
     public static PlayerWaypointData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(
-                new SavedData.Factory<>(PlayerWaypointData::new, PlayerWaypointData::read, DataFixTypes.SAVED_DATA_MAP_DATA),
+                new SavedData.Factory<>(PlayerWaypointData::new, PlayerWaypointData::read, null),
                 DATA_NAME);
     }
 
@@ -84,13 +85,17 @@ public class PlayerWaypointData extends SavedData {
         PlayerWaypointData data = new PlayerWaypointData();
         CompoundTag players = tag.getCompound(TAG_PLAYERS);
         for (String key : players.getAllKeys()) {
-            UUID player = UUID.fromString(key);
-            ListTag list = players.getList(key, Tag.TAG_INT_ARRAY);
-            Set<UUID> set = new HashSet<>();
-            for (Tag entry : list) {
-                set.add(NbtUtils.loadUUID(entry));
+            try {
+                UUID player = UUID.fromString(key);
+                ListTag list = players.getList(key, Tag.TAG_INT_ARRAY);
+                Set<UUID> set = new HashSet<>();
+                for (Tag entry : list) {
+                    set.add(NbtUtils.loadUUID(entry));
+                }
+                data.activated.put(player, set);
+            } catch (Exception e) {
+                TeleportWaypoint.LOGGER.warn("[TeleportWaypoint] Skipping invalid player waypoint data for key {}", key, e);
             }
-            data.activated.put(player, set);
         }
         return data;
     }

@@ -60,6 +60,7 @@ public final class XaeroMinimapIntegration {
     private static boolean lastShowInactiveWaypoints = true;
     private static boolean lastShowActiveWaypoints = true;
     private static int lastRange = 256;
+    private static int lastAppliedNameScale = -1;
     private static ResourceKey<Level> lastPlayerDimension;
     private static BlockPos lastPlayerPos;
     private static boolean initialized;
@@ -168,7 +169,10 @@ public final class XaeroMinimapIntegration {
             float distanceScale = MinimapConfigClientUtils.getUIScale(
                     configManager, MinimapProfiledConfigOptions.WAYPOINT_DISTANCE_SCALE_IN_WORLD);
             int nameValue = Math.max(1, Math.min(16, Math.round(distanceScale)));
-            profile.set(MinimapProfiledConfigOptions.WAYPOINT_NAME_SCALE_IN_WORLD, nameValue);
+            if (nameValue != lastAppliedNameScale) {
+                profile.set(MinimapProfiledConfigOptions.WAYPOINT_NAME_SCALE_IN_WORLD, nameValue);
+                lastAppliedNameScale = nameValue;
+            }
         } catch (Exception e) {
             TeleportWaypoint.LOGGER.debug("[TeleportWaypoint] Failed to sync Xaero waypoint name scale", e);
         }
@@ -292,7 +296,9 @@ public final class XaeroMinimapIntegration {
                     color = info.pocket() ? WaypointColor.YELLOW : WaypointColor.RED;
                 }
                 String symbol = info.pocket() ? "P" : "W";
-                String displayName = info.displayName().getString();
+                // Pocket waypoints use their literal name; regular waypoints use the raw
+                // translation key so Xaero can localize them in the current client language.
+                String displayName = info.pocket() ? info.name() : "teleportwaypoint.waypoint." + info.name();
 
                 Waypoint existing = map.get(id);
                 if (existing != null

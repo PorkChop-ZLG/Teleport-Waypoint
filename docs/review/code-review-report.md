@@ -21,6 +21,8 @@
 
 ### H-1 口袋锚点被破坏掉落时丢失 owner/name/uid
 
+- **状态**：设计如此，不修复（用户确认）
+
 - **位置**：
   - `src/main/resources/data/teleportwaypoint/loot_table/blocks/pocket_waypoint.json`
   - `src/main/java/com/zonlong/teleportwaypoint/block/PocketWaypointBlock.java`
@@ -45,6 +47,8 @@
 
 ### H-2 所有客户端都会收到全部口袋锚点数据（隐私泄露）
 
+- **状态**：暂不修复，后续对数据同步做更深入优化
+
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/core/WaypointManager.java`
     - `syncAllTo()` 约 172-192 行：登录时把 `WaypointRegistryData.getAll()` 全量发给每个玩家；
@@ -63,6 +67,8 @@
 ---
 
 ### H-3 Xaero 世界地图渲染器缺少 `shouldBeDimScaled() = false`，下界/末地坐标会偏移
+
+- **状态**：已修复
 
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/client/xaero/TeleportWaypointWorldRenderer.java`
@@ -88,6 +94,8 @@
 ---
 
 ### H-4 Xaero 小地图未按当前维度隔离，跨维度仍显示主世界锚点
+
+- **状态**：已修复
 
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java`
@@ -121,6 +129,8 @@
 
 ### M-1 Xaero 配置在每次客户端 tick 都被写入
 
+- **状态**：已修复
+
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java`
     - `sync()` 中无条件调用 `syncWaypointNameScaleToDistanceScale()`（约 92 行）；
@@ -140,6 +150,8 @@
 
 ### M-2 传送冷却可通过退出/重进绕过
 
+- **状态**：设计如此，不修复（退出重进已降低触发频率）
+
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/WaypointEvents.java`
     - `onPlayerLoggedOut()` 调用 `TeleportRateLimiter.remove(player.getUUID())`。
@@ -154,6 +166,8 @@
 ---
 
 ### M-3 自定义 SavedData 使用了 `DataFixTypes.SAVED_DATA_MAP_DATA`
+
+- **状态**：已修复（DataFixTypes 改为 null，保持文件名/NBT 不变）
 
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/core/WaypointRegistryData.java`
@@ -173,6 +187,8 @@
 
 ### M-4 SavedData 读取对损坏数据不健壮
 
+- **状态**：已修复
+
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/core/PlayerWaypointData.java#read`
   - `src/main/java/com/zonlong/teleportwaypoint/core/WaypointRegistryData.java#read`
@@ -186,6 +202,8 @@
 ## 三、低严重级别
 
 ### L-1 Xaero 名称传入已解析文本而非原始翻译键
+
+- **状态**：已修复
 
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java`
@@ -203,6 +221,8 @@
 
 ### L-2 Xaero 小地图 customWaypoints key 使用维度子命名空间
 
+- **状态**：已修复（随 H-4 改为单一 `MINIMAP_KEY`）
+
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java#customKey`
 - **说明**：
@@ -214,6 +234,8 @@
 ---
 
 ### L-3 `TeleportWaypointTooltip` 依赖 `super.drawBox` 的内部偏移
+
+- **状态**：暂不修复
 
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/client/xaero/TeleportWaypointTooltip.java`
@@ -227,6 +249,8 @@
 
 ### L-4 `WaypointTeleporter.findLanding` 不检查岩浆/虚空/世界边界
 
+- **状态**：暂不修复
+
 - **位置**：
   - `src/main/java/com/zonlong/teleportwaypoint/core/WaypointTeleporter.java`
 - **说明**：
@@ -238,6 +262,8 @@
 ---
 
 ### L-5 README / 版本信息不一致
+
+- **状态**：已修复
 
 - **位置**：
   - `README.md`
@@ -260,12 +286,12 @@
 
 ## 五、审查结论
 
-项目整体结构清晰，服务端权威校验、网络同步、Xaero 反射隔离、数据包注册等做得比较规范。当前最值得优先修复的是：
+项目整体结构清晰，服务端权威校验、网络同步、Xaero 反射隔离、数据包注册等做得比较规范。
 
-1. **H-1**：口袋锚点掉落丢失数据；
-2. **H-2**：口袋锚点全量下发造成的隐私泄露；
-3. **H-3**：世界地图在下界/末地坐标偏移。
+当前状态：
 
-其次是 **M-1**（每 tick 写 Xaero 配置）和 **M-2**（冷却可被重连绕过）。
+- **已修复**：H-3、H-4、M-1、M-3、M-4、L-1、L-2、L-5
+- **设计如此，不修复**：H-1、M-2
+- **暂不修复**：H-2、L-3、L-4
 
-建议按 H → M → L 的顺序处理，并在修改后重新构建并做游戏内验证。
+建议后续优先处理 **H-2**（数据同步隐私优化），其余暂缓项可根据实际需要再评估。

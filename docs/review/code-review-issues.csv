@@ -1,14 +1,14 @@
-ID,严重级别,类别,位置,标题,建议
-H-1,高,数据丢失,src/main/resources/data/teleportwaypoint/loot_table/blocks/pocket_waypoint.json; src/main/java/com/zonlong/teleportwaypoint/block/PocketWaypointBlock.java; src/main/java/com/zonlong/teleportwaypoint/block/entity/WaypointBlockEntity.java,口袋锚点破坏掉落丢失 owner/name/uid,重写 getCloneItemStack/getDrops 使用 saveToItem 或迁移到 DataComponent + copy_components
-H-2,高,隐私/安全,src/main/java/com/zonlong/teleportwaypoint/core/WaypointManager.java,所有客户端收到全部口袋锚点数据,全量同步只下发非口袋锚点；口袋锚点按激活/所有权定向发送
-H-3,高,正确性,src/main/java/com/zonlong/teleportwaypoint/client/xaero/TeleportWaypointWorldRenderer.java,世界地图缺少 shouldBeDimScaled=false 导致下界/末地坐标偏移,增加 shouldBeDimScaled() 返回 false
-H-4,高,正确性,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java,Xaero 小地图未按当前维度隔离导致跨维度显示主世界锚点,在 sync() 中跳过与当前玩家维度不同的锚点
-M-1,中,性能,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java; src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroWorldMapIntegration.java,Xaero 配置每 tick 写入,缓存上次值仅变化时 set；name scale 移入变更分支
-M-2,中,反作弊/玩法,src/main/java/com/zonlong/teleportwaypoint/WaypointEvents.java; src/main/java/com/zonlong/teleportwaypoint/core/TeleportRateLimiter.java,传送冷却可退出重进绕过,登出不移除冷却或持久化冷却时间
-M-3,中,兼容性,src/main/java/com/zonlong/teleportwaypoint/core/WaypointRegistryData.java; src/main/java/com/zonlong/teleportwaypoint/core/PlayerWaypointData.java,自定义 SavedData 使用 SAVED_DATA_MAP_DATA datafixer,改用 null 或专用 datafixer
-M-4,中,健壮性,src/main/java/com/zonlong/teleportwaypoint/core/PlayerWaypointData.java; src/main/java/com/zonlong/teleportwaypoint/core/WaypointRegistryData.java,SavedData 读取损坏数据会崩溃,解析失败跳过并 warn
-L-1,低,i18n,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java; src/main/java/com/zonlong/teleportwaypoint/client/xaero/TeleportWaypointWorldReader.java,Xaero 名称传入已解析文本而非翻译键,普通锚点传原始翻译键，口袋传字面名
-L-2,低,兼容性,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java,customWaypoints key 使用维度子命名空间,补充注释并纳入 Xaero 升级回归验证
-L-3,低,维护性,src/main/java/com/zonlong/teleportwaypoint/client/xaero/TeleportWaypointTooltip.java,Tooltip 依赖 super.drawBox 内部偏移,对照 Xaero Tooltip 基类适配
-L-4,低,玩法安全,src/main/java/com/zonlong/teleportwaypoint/core/WaypointTeleporter.java,落点不检查岩浆/虚空/世界边界,增加安全落点检查
-L-5,低,文档,README.md,README 版本与配置文件说明过期,同步更新 README
+ID,严重级别,类别,状态,位置,标题,建议
+H-1,高,数据丢失,设计如此不修复,src/main/resources/data/teleportwaypoint/loot_table/blocks/pocket_waypoint.json; src/main/java/com/zonlong/teleportwaypoint/block/PocketWaypointBlock.java; src/main/java/com/zonlong/teleportwaypoint/block/entity/WaypointBlockEntity.java,口袋锚点破坏掉落丢失 owner/name/uid,掉落物不保留锚点数据为设计行为
+H-2,高,隐私/安全,暂不修复,src/main/java/com/zonlong/teleportwaypoint/core/WaypointManager.java,所有客户端收到全部口袋锚点数据,后续对数据同步做更深入优化
+H-3,高,正确性,已修复,src/main/java/com/zonlong/teleportwaypoint/client/xaero/TeleportWaypointWorldRenderer.java,世界地图缺少 shouldBeDimScaled=false 导致下界/末地坐标偏移,已增加 shouldBeDimScaled() 返回 false
+H-4,高,正确性,已修复,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java,Xaero 小地图未按当前维度隔离导致跨维度显示主世界锚点,已在 sync() 中按当前玩家维度过滤并使用单一 MINIMAP_KEY
+M-1,中,性能,已修复,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java; src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroWorldMapIntegration.java,Xaero 配置每 tick 写入,已增加缓存，仅在值变化时写入
+M-2,中,反作弊/玩法,设计如此不修复,src/main/java/com/zonlong/teleportwaypoint/WaypointEvents.java; src/main/java/com/zonlong/teleportwaypoint/core/TeleportRateLimiter.java,传送冷却可退出重进绕过,退出重进已降低触发频率，保持现状
+M-3,中,兼容性,已修复,src/main/java/com/zonlong/teleportwaypoint/core/WaypointRegistryData.java; src/main/java/com/zonlong/teleportwaypoint/core/PlayerWaypointData.java,自定义 SavedData 使用 SAVED_DATA_MAP_DATA datafixer,已改为 null，保持文件名/NBT不变
+M-4,中,健壮性,已修复,src/main/java/com/zonlong/teleportwaypoint/core/PlayerWaypointData.java; src/main/java/com/zonlong/teleportwaypoint/core/WaypointRegistryData.java,SavedData 读取损坏数据会崩溃,已增加 try/catch 跳过损坏条目并 warn
+L-1,低,i18n,已修复,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java; src/main/java/com/zonlong/teleportwaypoint/client/xaero/TeleportWaypointWorldReader.java,Xaero 名称传入已解析文本而非翻译键,普通锚点已传原始翻译键，口袋锚点传字面名；右键菜单改用基础键+nameFormatArgs
+L-2,低,兼容性,已修复,src/main/java/com/zonlong/teleportwaypoint/client/xaero/XaeroMinimapIntegration.java,customWaypoints key 使用维度子命名空间,已随 H-4 改为单一 MINIMAP_KEY
+L-3,低,维护性,暂不修复,src/main/java/com/zonlong/teleportwaypoint/client/xaero/TeleportWaypointTooltip.java,Tooltip 依赖 super.drawBox 内部偏移,暂不处理
+L-4,低,玩法安全,暂不修复,src/main/java/com/zonlong/teleportwaypoint/core/WaypointTeleporter.java,落点不检查岩浆/虚空/世界边界,暂不处理
+L-5,低,文档,已修复,README.md,README 版本与配置文件说明过期,已更新 README 到最新状态
