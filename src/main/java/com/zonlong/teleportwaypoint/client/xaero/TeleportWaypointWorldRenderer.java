@@ -101,4 +101,12 @@ public class TeleportWaypointWorldRenderer
     public int getOrder() {
         return 201;
     }
+
+    @Override
+    public boolean shouldBeDimScaled() {
+        // Our reader returns actual block coordinates; Xaero's world map already
+        // applies the current dimension's coordinate scale when rendering the map,
+        // so we must not divide element coordinates by the dimension scale again.
+        return false;
+    }
 }

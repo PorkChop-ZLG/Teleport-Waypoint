@@ -40,12 +40,16 @@ import xaero.hud.minimap.world.MinimapWorldManager;
  * <p>Custom waypoint maps are keyed by a mod-specific {@link ResourceLocation}
  * so we never share an ID namespace with other integrations. IDs are stable
  * hashes of the waypoint UUID with collision probing, and removals verify the
- * stored {@link Waypoint} instance is still ours before deleting it. All ID
- * bookkeeping is scoped per custom key (i.e. per dimension bucket) so the same
- * integer ID can safely exist in different dimension maps.
+ * stored {@link Waypoint} instance is still ours before deleting it.
+ *
+ * <p>Xaero's custom waypoint store is global and does not understand dimensions,
+ * so this integration only registers waypoints for the player's current
+ * dimension and removes them when the player changes dimension.
  */
 public final class XaeroMinimapIntegration {
     private static final int MAX_ID = 2_000_000_000;
+    private static final ResourceLocation MINIMAP_KEY =
+            ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, "minimap");
 
     private static final Map<ResourceLocation, Map<UUID, Integer>> UID_TO_ID = new HashMap<>();
     private static final Map<ResourceLocation, Map<Integer, UUID>> ID_TO_UID = new HashMap<>();
@@ -125,16 +129,22 @@ public final class XaeroMinimapIntegration {
         Map<ResourceLocation, List<ClientWaypointInfo>> desired = new HashMap<>();
         if (showWaypoints) {
             Player player = Minecraft.getInstance().player;
-            for (ClientWaypointInfo info : ClientWaypointState.getWaypoints()) {
-                if (!shouldShow(info.pocket(), ClientWaypointState.isActivated(info.uid()))) {
-                    continue;
-                }
-                if (player != null && info.dimension().equals(player.level().dimension())) {
+            if (player != null) {
+                ResourceKey<Level> currentDimension = player.level().dimension();
+                for (ClientWaypointInfo info : ClientWaypointState.getWaypoints()) {
+                    if (!shouldShow(info.pocket(), ClientWaypointState.isActivated(info.uid()))) {
+                        continue;
+                    }
+                    // Xaero custom waypoints are global and not dimension-aware, so only
+                    // register waypoints for the dimension the player is currently in.
+                    if (!info.dimension().equals(currentDimension)) {
+                        continue;
+                    }
                     if (range > 0 && distanceSq(player.blockPosition(), info.pos()) > (long) range * range) {
                         continue;
                     }
+                    desired.computeIfAbsent(MINIMAP_KEY, k -> new ArrayList<>()).add(info);
                 }
-                desired.computeIfAbsent(customKey(info.dimension().location()), k -> new ArrayList<>()).add(info);
             }
         }
 
@@ -362,12 +372,6 @@ public final class XaeroMinimapIntegration {
 
     private static int nextId(int id) {
         return id >= MAX_ID ? 1 : id + 1;
-    }
-
-    private static ResourceLocation customKey(ResourceLocation dimension) {
-        return ResourceLocation.fromNamespaceAndPath(
-                TeleportWaypoint.MODID,
-                "minimap/" + dimension.getNamespace() + "/" + dimension.getPath());
     }
 
     private static Map<UUID, Integer> uidToIdMap(ResourceLocation key) {
