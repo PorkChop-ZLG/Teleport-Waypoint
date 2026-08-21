@@ -11,16 +11,18 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
-public record SyncActivatedWaypointsPayload(List<ActivatedWaypointInfo> waypoints) implements CustomPacketPayload {
-    public static final int MAX_ACTIVATED_SYNC = 100_000;
+public record SyncActivatedWaypointsPayload(List<ActivatedWaypointInfo> waypoints, int page, boolean done) implements CustomPacketPayload {
+    public static final int MAX_PAGE_SIZE = 500;
 
     public static final Type<SyncActivatedWaypointsPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, "sync_activated_waypoints"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncActivatedWaypointsPayload> STREAM_CODEC =
             StreamCodec.composite(
-                    ByteBufCodecs.collection(ArrayList::new, ActivatedWaypointInfo.STREAM_CODEC, MAX_ACTIVATED_SYNC),
+                    ByteBufCodecs.collection(ArrayList::new, ActivatedWaypointInfo.STREAM_CODEC, MAX_PAGE_SIZE),
                     SyncActivatedWaypointsPayload::waypoints,
+                    ByteBufCodecs.VAR_INT, SyncActivatedWaypointsPayload::page,
+                    ByteBufCodecs.BOOL, SyncActivatedWaypointsPayload::done,
                     SyncActivatedWaypointsPayload::new);
 
     @Override

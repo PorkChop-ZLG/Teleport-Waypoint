@@ -41,6 +41,7 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
     private WaypointList waypointList;
     private String searchText = "";
     private boolean sortByName = false;
+    private int lastRevision = -1;
     private Button sortButton;
 
     public WaypointListScreen(WaypointListMenu menu, Inventory inventory, Component title) {
@@ -98,6 +99,16 @@ public class WaypointListScreen extends AbstractWaypointScreen<WaypointListMenu>
                 })));
         addRenderableWidget(waypointList);
         updateList();
+        lastRevision = ClientWaypointState.getRevision();
+    }
+
+    @Override
+    public void tick() {
+        int revision = ClientWaypointState.getRevision();
+        if (revision != lastRevision) {
+            lastRevision = revision;
+            updateList();
+        }
     }
 
     private boolean canEdit(WaypointBlockEntity wbe) {

@@ -183,7 +183,17 @@ public class WaypointManager {
         for (UUID uid : getActivated(player)) {
             registry.get(uid).ifPresent(record -> infos.add(toActivatedInfo(record)));
         }
-        PacketDistributor.sendToPlayer(player, new SyncActivatedWaypointsPayload(infos));
+
+        int pageSize = SyncActivatedWaypointsPayload.MAX_PAGE_SIZE;
+        int total = infos.size();
+        int pages = Math.max(1, (total + pageSize - 1) / pageSize);
+        for (int page = 0; page < pages; page++) {
+            int from = page * pageSize;
+            int to = Math.min(total, from + pageSize);
+            List<ActivatedWaypointInfo> pageEntries = infos.subList(from, to);
+            PacketDistributor.sendToPlayer(player,
+                    new SyncActivatedWaypointsPayload(pageEntries, page, page == pages - 1));
+        }
     }
 
     /**

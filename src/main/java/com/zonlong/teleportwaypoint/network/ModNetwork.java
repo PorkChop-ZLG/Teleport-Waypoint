@@ -78,7 +78,7 @@ public class ModNetwork {
     }
 
     private static void handleSyncActivated(final SyncActivatedWaypointsPayload payload, final IPayloadContext context) {
-        context.enqueueWork(() -> ClientWaypointState.setActivated(payload.waypoints()));
+        context.enqueueWork(() -> ClientWaypointState.applyActivatedSnapshot(payload.waypoints(), payload.page(), payload.done()));
     }
 
     private static void handleSyncDimensionWaypoints(final SyncDimensionWaypointsPayload payload, final IPayloadContext context) {

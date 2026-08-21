@@ -30,6 +30,9 @@ public final class ClientWaypointState {
     private static int revision;
     private static boolean initialized;
     private static final List<Runnable> pending = new ArrayList<>();
+    private static List<ActivatedWaypointInfo> activatedSnapshot = List.of();
+    private static boolean activatedSnapshotInProgress;
+    private static final List<Runnable> pendingActivated = new ArrayList<>();
 
     private ClientWaypointState() {
     }
@@ -62,6 +65,30 @@ public final class ClientWaypointState {
             revision++;
             syncActivatedNamesFromWaypoints();
             flushPending();
+        }
+    }
+
+    /** Applies one page of the activated-waypoint snapshot; resets on page 0 and publishes on done. */
+    public static void applyActivatedSnapshot(List<ActivatedWaypointInfo> infos, int page, boolean done) {
+        if (page == 0) {
+            activatedSnapshot = new ArrayList<>();
+            activatedSnapshotInProgress = true;
+            pendingActivated.clear();
+        }
+        List<ActivatedWaypointInfo> temp = new ArrayList<>(activatedSnapshot);
+        temp.addAll(infos);
+        activatedSnapshot = List.copyOf(temp);
+        if (done) {
+            activated = activatedSnapshot;
+            Set<UUID> set = new HashSet<>();
+            for (ActivatedWaypointInfo info : activated) {
+                set.add(info.uid());
+            }
+            activatedUids = Set.copyOf(set);
+            activatedSnapshot = List.of();
+            activatedSnapshotInProgress = false;
+            revision++;
+            flushPendingActivated();
         }
     }
 
@@ -127,6 +154,10 @@ public final class ClientWaypointState {
             pending.add(() -> applyActivatedAdd(info));
             return;
         }
+        if (activatedSnapshotInProgress) {
+            pendingActivated.add(() -> applyActivatedAdd(info));
+            return;
+        }
         List<ActivatedWaypointInfo> list = new ArrayList<>(activated);
         if (activatedUids.contains(info.uid())) {
             list.replaceAll(existing -> existing.uid().equals(info.uid()) ? info : existing);
@@ -143,6 +174,10 @@ public final class ClientWaypointState {
     public static void applyActivatedRemove(UUID uid) {
         if (!initialized) {
             pending.add(() -> applyActivatedRemove(uid));
+            return;
+        }
+        if (activatedSnapshotInProgress) {
+            pendingActivated.add(() -> applyActivatedRemove(uid));
             return;
         }
         if (!activatedUids.contains(uid)) {
@@ -197,16 +232,6 @@ public final class ClientWaypointState {
         return activated;
     }
 
-    public static void setActivated(List<ActivatedWaypointInfo> infos) {
-        activated = List.copyOf(infos);
-        Set<UUID> set = new HashSet<>();
-        for (ActivatedWaypointInfo info : infos) {
-            set.add(info.uid());
-        }
-        activatedUids = Set.copyOf(set);
-        revision++;
-    }
-
     public static void removeActivated(UUID uid) {
         if (uid == null) {
             return;
@@ -228,6 +253,9 @@ public final class ClientWaypointState {
         currentDimension = null;
         initialized = false;
         pending.clear();
+        activatedSnapshot = List.of();
+        activatedSnapshotInProgress = false;
+        pendingActivated.clear();
         revision++;
     }
 
@@ -243,6 +271,14 @@ public final class ClientWaypointState {
     private static void flushPending() {
         List<Runnable> copy = new ArrayList<>(pending);
         pending.clear();
+        for (Runnable runnable : copy) {
+            runnable.run();
+        }
+    }
+
+    private static void flushPendingActivated() {
+        List<Runnable> copy = new ArrayList<>(pendingActivated);
+        pendingActivated.clear();
         for (Runnable runnable : copy) {
             runnable.run();
         }

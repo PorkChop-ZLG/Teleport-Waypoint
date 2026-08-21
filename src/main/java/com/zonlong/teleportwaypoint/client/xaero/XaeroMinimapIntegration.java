@@ -290,7 +290,7 @@ public final class XaeroMinimapIntegration {
             for (ClientWaypointInfo info : entry.getValue()) {
                 Integer oldId = idByUid.get(info.uid());
                 if (oldId != null) {
-                    Waypoint current = map.get(oldId);
+                    Waypoint current = map.get(oldId.intValue());
                     if (current != null && current != waypointById.get(oldId)) {
                         // Our old slot was overwritten by another integration; release it and allocate a fresh id.
                         waypointById.remove(oldId);
@@ -323,7 +323,7 @@ public final class XaeroMinimapIntegration {
                         && existing.getX() == info.pos().getX()
                         && existing.getY() == info.pos().getY()
                         && existing.getZ() == info.pos().getZ()
-                        && Objects.equals(existing.getSymbol(), symbol)
+                        && Objects.equals(existing.getInitials(), symbol)
                         && Objects.equals(existing.getName(), displayName)
                         && existing.getWaypointColor() == color) {
                     continue;
@@ -369,7 +369,7 @@ public final class XaeroMinimapIntegration {
 
         Integer existing = idByUid.get(uid);
         if (existing != null) {
-            Waypoint current = map.get(existing);
+            Waypoint current = map.get(existing.intValue());
             if (current == null || current == waypointById.get(existing)) {
                 return existing;
             }
