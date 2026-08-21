@@ -41,6 +41,7 @@
   "teleportwaypoint.waypoint.desert_pyramid": "沙漠神殿",
   "teleportwaypoint.waypoint.igloo": "雪屋",
   "teleportwaypoint.waypoint.jungle_temple": "丛林神庙",
+  "teleportwaypoint.waypoint.swamp_hut": "沼泽小屋",
 
   "teleportwaypoint.configuration.title": "传送锚点配置",
   "teleportwaypoint.configuration.section.teleportwaypoint.common.toml": "传送锚点 - 通用配置",

@@ -41,6 +41,7 @@
   "teleportwaypoint.waypoint.desert_pyramid": "Desert Pyramid",
   "teleportwaypoint.waypoint.igloo": "Igloo",
   "teleportwaypoint.waypoint.jungle_temple": "Jungle Temple",
+  "teleportwaypoint.waypoint.swamp_hut": "Swamp Hut",
 
   "teleportwaypoint.configuration.title": "Teleport Waypoint Configs",
   "teleportwaypoint.configuration.section.teleportwaypoint.common.toml": "Teleport Waypoint - Common Config",
