@@ -30,7 +30,7 @@ public final class ClientWaypointState {
     private static int revision;
     private static boolean initialized;
     private static final List<Runnable> pending = new ArrayList<>();
-    private static List<ActivatedWaypointInfo> activatedSnapshot = List.of();
+    private static List<ActivatedWaypointInfo> activatedSnapshot = new ArrayList<>();
     private static boolean activatedSnapshotInProgress;
     private static final List<Runnable> pendingActivated = new ArrayList<>();
 
@@ -75,17 +75,15 @@ public final class ClientWaypointState {
             activatedSnapshotInProgress = true;
             pendingActivated.clear();
         }
-        List<ActivatedWaypointInfo> temp = new ArrayList<>(activatedSnapshot);
-        temp.addAll(infos);
-        activatedSnapshot = List.copyOf(temp);
+        activatedSnapshot.addAll(infos);
         if (done) {
-            activated = activatedSnapshot;
+            activated = List.copyOf(activatedSnapshot);
             Set<UUID> set = new HashSet<>();
             for (ActivatedWaypointInfo info : activated) {
                 set.add(info.uid());
             }
             activatedUids = Set.copyOf(set);
-            activatedSnapshot = List.of();
+            activatedSnapshot = new ArrayList<>();
             activatedSnapshotInProgress = false;
             revision++;
             flushPendingActivated();
@@ -253,7 +251,7 @@ public final class ClientWaypointState {
         currentDimension = null;
         initialized = false;
         pending.clear();
-        activatedSnapshot = List.of();
+        activatedSnapshot = new ArrayList<>();
         activatedSnapshotInProgress = false;
         pendingActivated.clear();
         revision++;

@@ -14,7 +14,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 public class ModNetwork {
 
     public static void register(final RegisterPayloadHandlersEvent event) {
-        final PayloadRegistrar registrar = event.registrar("3");
+        final PayloadRegistrar registrar = event.registrar("4");
 
         registrar.playToClient(
                 SyncActivatedWaypointsPayload.TYPE,
