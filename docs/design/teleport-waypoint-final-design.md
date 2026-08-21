@@ -1,6 +1,6 @@
 # Teleport Waypoint 最终设计文档
 
-**版本:** 0.2.0  
+**版本:** 0.3.0  
 **日期:** 2026-08-20  
 **状态:** 最终设计  
 **Mod ID:** `teleportwaypoint`  
