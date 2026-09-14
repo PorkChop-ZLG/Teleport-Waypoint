@@ -1,9 +1,11 @@
 package com.zonlong.teleportwaypoint.block.entity;
 
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import com.zonlong.teleportwaypoint.block.ModBlocks;
 import com.zonlong.teleportwaypoint.core.WaypointManager;
+import com.zonlong.teleportwaypoint.util.Naming;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -33,7 +35,12 @@ public class WaypointBlockEntity extends BlockEntity {
     private static final String TAG_NAME = "name";
     private static final String TAG_OWNER = "owner";
 
-    private static final String ID_PATTERN = "[a-z0-9_]+";
+    /**
+     * Structured waypoint ids derive from a structure registry id as {@code <namespace>.<path>}
+     * (for example {@code minecraft.end_city}), so dots are allowed but may not lead, trail, or
+     * repeat. Legacy bare ids such as {@code end_city} stay valid for existing saves.
+     */
+    private static final Pattern ID_PATTERN = Pattern.compile("[a-z0-9_]+(?:\\.[a-z0-9_]+)*");
 
     private UUID uid;
     private String id = "empty";
@@ -111,11 +118,11 @@ public class WaypointBlockEntity extends BlockEntity {
         if (isPocketWaypoint()) {
             return Component.literal(name);
         }
-        return (id.isEmpty() || !isValidId(id)) ? Component.translatable("teleportwaypoint.waypoint.empty") : Component.translatable("teleportwaypoint.waypoint." + id);
+        return Naming.displayName(id);
     }
 
     public static boolean isValidId(String id) {
-        return id != null && id.length() <= MAX_TEXT_LENGTH && id.matches(ID_PATTERN);
+        return id != null && id.length() <= MAX_TEXT_LENGTH && ID_PATTERN.matcher(id).matches();
     }
 
     public static boolean isValidName(String name) {

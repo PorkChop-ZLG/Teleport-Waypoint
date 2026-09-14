@@ -2,6 +2,8 @@ package com.zonlong.teleportwaypoint.network;
 
 import java.util.UUID;
 
+import com.zonlong.teleportwaypoint.util.Naming;
+
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -20,6 +22,6 @@ public record ActivatedWaypointInfo(UUID uid, boolean pocket, String name) {
                     ActivatedWaypointInfo::new);
 
     public Component toComponent() {
-        return pocket ? Component.literal(name) : Component.translatable("teleportwaypoint.waypoint." + name);
+        return pocket ? Component.literal(name) : Naming.displayName(name);
     }
 }

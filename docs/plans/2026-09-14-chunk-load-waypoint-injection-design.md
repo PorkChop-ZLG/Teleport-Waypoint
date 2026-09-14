@@ -210,7 +210,7 @@
 | `#minecraft:village` | 5 |
 | `#minecraft:shipwreck` | 2 |
 | `#minecraft:ocean_ruin` | 2 |
-| `minecraft:mineshaft`（标签，含 `mineshaft_mesa`） | 2 |
+| `#minecraft:mineshaft`（引用标签，含 `mineshaft_mesa`） | 2 |
 | `minecraft:buried_treasure` | 1 |
 | `minecraft:nether_fossil` | 1 |
 | `minecraft:pillager_outpost` | 1 |
@@ -218,6 +218,10 @@
 | **合计** | **22** |
 
 > **注意标签的两层语义**：`waypoint_blacklist.json` 里的 `#minecraft:village` 是**引用了原版的村庄标签**，而不是定义它。这是标签的「引用其他标签」用法。本模组自己的标签命名空间是 `teleportwaypoint`，引用原版标签时仍写 `#minecraft:...`。
+>
+> **⚠ 实现期更正（2026-09-14，已实测）：本节上方代码块里的 `"minecraft:mineshaft"` 必须写成 `"#minecraft:mineshaft"`，本表的 `minecraft:mineshaft` 一栏同步改为 `#minecraft:mineshaft`。**
+> `mineshaft` 在原版**同时**是一个结构 ID 和一个结构标签文件。写裸 `"minecraft:mineshaft"` 会被解析为**单个结构**，导致 `mineshaft_mesa` 不在黑名单里、展开数为 **21 而非 22**；原版 34 个结构中会漏掉 1 个（`mineshaft_mesa` 既不在白名单 12 条内、也不在黑名单里，在 BLACKLIST 模式下会被误放锚点）。
+> 已用 `client-extra.jar` 实测核对：改为 `#minecraft:mineshaft` 后 `12 + 22 = 34` 精确成立，无重复、无遗漏。决策不变，仅该一条的写法改变。上方代码块保持原样以留存决策原貌，**以本条更正为准**。
 
 ### 5.3 作者如何为新模组结构接入
 

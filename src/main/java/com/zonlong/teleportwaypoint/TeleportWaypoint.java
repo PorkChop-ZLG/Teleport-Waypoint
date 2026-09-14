@@ -12,11 +12,13 @@ import com.zonlong.teleportwaypoint.datapack.DatapackRegistration;
 import com.zonlong.teleportwaypoint.item.ModItems;
 import com.zonlong.teleportwaypoint.menu.ModMenus;
 import com.zonlong.teleportwaypoint.network.ModNetwork;
+import com.zonlong.teleportwaypoint.structure.StructureWaypointHandler;
 
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.common.NeoForge;
 
 @Mod(TeleportWaypoint.MODID)
 public class TeleportWaypoint {
@@ -31,6 +33,9 @@ public class TeleportWaypoint {
         ModMenus.MENUS.register(modEventBus);
         modEventBus.addListener(ModNetwork::register);
         modEventBus.addListener(DatapackRegistration::onAddPackFinders);
+
+        // ChunkEvent.Load is a game event, so it belongs on the NeoForge event bus rather than the mod bus.
+        NeoForge.EVENT_BUS.addListener(StructureWaypointHandler::onChunkLoad);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, CommonConfig.SPEC, "teleportwaypoint/common.toml");
         modContainer.registerConfig(ModConfig.Type.CLIENT, XaeroMinimapConfig.SPEC, "teleportwaypoint/xaero-minimap.toml");

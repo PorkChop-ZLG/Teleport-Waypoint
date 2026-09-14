@@ -14,6 +14,7 @@ import com.zonlong.teleportwaypoint.TeleportWaypoint;
 import com.zonlong.teleportwaypoint.config.XaeroMinimapConfig;
 import com.zonlong.teleportwaypoint.client.ClientWaypointInfo;
 import com.zonlong.teleportwaypoint.client.ClientWaypointState;
+import com.zonlong.teleportwaypoint.util.Naming;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.client.Minecraft;
@@ -315,7 +316,7 @@ public final class XaeroMinimapIntegration {
                 String symbol = info.pocket() ? "P" : "W";
                 // Pocket waypoints use their literal name; regular waypoints use the raw
                 // translation key so Xaero can localize them in the current client language.
-                String displayName = info.pocket() ? info.name() : "teleportwaypoint.waypoint." + info.name();
+                String displayName = info.pocket() ? info.name() : Naming.key(info.name());
 
                 Waypoint existing = map.get(id);
                 if (existing != null

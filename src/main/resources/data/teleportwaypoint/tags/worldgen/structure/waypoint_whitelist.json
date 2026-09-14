@@ -1,0 +1,17 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:ancient_city",
+    "minecraft:bastion_remnant",
+    "minecraft:desert_pyramid",
+    "minecraft:end_city",
+    "minecraft:fortress",
+    "minecraft:igloo",
+    "minecraft:jungle_pyramid",
+    "minecraft:mansion",
+    "minecraft:monument",
+    "minecraft:stronghold",
+    "minecraft:swamp_hut",
+    "minecraft:trial_chambers"
+  ]
+}
