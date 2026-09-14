@@ -21,10 +21,10 @@ gradlew.bat clean build --offline --console=plain
 
 ```
 gradlew.bat runGameTestServer --offline --console=plain
-→ All 18 required tests passed :)
+→ All 20 required tests passed :)
 ```
 
-连续两次运行均通过（用于排除偶发）。覆盖的 18 个测试：
+连续多次运行均通过（用于排除偶发）。覆盖的 20 个测试：
 
 | 分组 | 测试 |
 |---|---|
@@ -115,6 +115,52 @@ gradlew.bat runServer --offline --console=plain
 ### 3.5 上游「待评审」文档的 10 处冲突
 
 见实施计划 §0.3（C1–C10）。全部以区块补锚文档为准；上游文档**未修改**。
+
+### 3.6 【严重】放置用 `UPDATE_ALL` 导致主线程自死锁（已修复）
+
+**症状：** 游玩一段时间后服务器**突然完全冻结**，不崩溃，`latest.log` / `debug.log` 里没有任何有价值的信息，`crash-reports` 为空。
+
+**根因：** `StructureWaypointPlacer` 用 `level.setBlock(pos, state, Block.UPDATE_ALL)` 放置锚点。`UPDATE_ALL` 含 `UPDATE_NEIGHBORS`，会触发**邻居更新级联**，而级联会**同步读取相邻区块的方块**。相邻区块在 FULL 阶段不保证已加载，于是进入 `ServerChunkCache` 的 `managedBlock`，等待一个只有主线程自己才能完成的 future —— 而主线程正卡在处理器里。**自死锁。**
+
+**完整调用链（可复核）：**
+
+```
+Level.setBlock:261          markAndNotifyBlock(...)
+Level.markAndNotifyBlock:286  if ((flags & 1) != 0)          // UPDATE_NEIGHBORS = 1
+Level.markAndNotifyBlock:287      this.blockUpdated(pos, block)
+ServerLevel.blockUpdated:1591     → updateNeighborsAt(pos, block)
+ServerLevel.updateNeighborsAt:1115  → neighborUpdater.updateNeighborsAtExceptFromFacing(...)
+CollectingNeighborUpdater:48       → addAndRun(...) → runUpdates()   // 同一调用栈内同步执行
+MultiNeighborUpdate.runNext:122-123   BlockState bs = level.getBlockState(邻居)
+Level.getBlockState:410               → getChunk(..., ChunkStatus.FULL)   // requireChunk = true
+Level.getChunk:202                    → ServerChunkCache.getChunk(x, z, FULL, true)
+ServerChunkCache.getChunk:159         this.mainThreadProcessor.managedBlock(f::isDone);   // ★ 永久阻塞
+```
+
+**为什么相邻区块可能没到 FULL：** `ChunkPyramid.GENERATION_PYRAMID` 的 `FULL` 步骤（`:45`）**自身没有任何 requirement**，继承最近一次声明 —— `LIGHT` 的 `addRequirement(ChunkStatus.INITIALIZE_LIGHT, 1)`（`:43`）。因此区块在跑 FULL（也就是 `ChunkEvent.Load` 触发的时刻）时，其 8 个水平邻居**只保证到 `INITIALIZE_LIGHT`**。
+
+**为什么偶发：** 需两个条件同时成立 —— ① 落点落在区块边界列（x/z 为 0 或 15，扫描器不排除边界）；② 该列外侧的相邻区块当时未到 FULL。玩家用旁观模式高速飞行时条件②概率被放大。
+
+**为什么日志里没有线索：**
+- `ServerChunkCache.getChunk:163` 的 `IllegalStateException("Chunk not there when requested")` 在 `:159` 的 `managedBlock` **之后**，永远到不了；
+- watchdog 本身也需要主线程推进才能报警，一旦卡在这里连它一起冻住；
+- 所以表现就是「静止 + 无日志 + 无 crash-report」。
+
+**本次事故的日志指纹（`run/logs`）：**
+- `debug.log` 最后一条服务端主线程记录是 `21:51:31.890` 的结构锚点日志，之后主线程再无任何输出（连每 15 秒的自动存档都停），而渲染线程仍在活动（`21:52:18` 仍有 JEI 日志）⇒ 只有服务端线程卡住；
+- `21:52:05`、`21:53:05` 两条 `spark: Timed out waiting for world statistics` ⇒ spark 也拿不到 tick 统计；
+- 会话期间 `crash-reports` 一份都没有。
+
+**修复（方案 A）：** 改用 `Block.UPDATE_CLIENTS`，即去掉 `UPDATE_NEIGHBORS`，邻居级联不再发生。该方块不依赖邻居通知（无红石、无形状逻辑，`SimpleWaterloggedBlock` 的流体状态来自方块状态），光照与客户端更新由 `LevelChunk.setBlockState` 独立排队，不受影响。
+
+**修复位置：** `structure/StructureWaypointPlacer.java:83`。
+
+**这个坑为什么之前没被发现：** 实施计划 §0.5 的 E3 断言「事件期间对本区块调 `level.setBlock` 会短路返回，不阻塞」——**该断言本身正确，但只覆盖了 `setBlock` 的第一次区块查找**（`getChunkAt(pos)`，pos 在事件区块内）。它没有覆盖 `setBlock` **派生出的邻居更新级联**，而级联读的是**其他**区块。E3 已就地更正并新增 E3a，禁止清单新增 F6，风险登记新增 R17，评审清单新增第 15/16 条长期钉住。
+
+### 3.7 遗留观察（未修改，供后续评估）
+
+L2 兜底扫描的起点是「结构最高 piece 顶部 + 8」，配合 64 格上限，意味着当某列在 `[结构顶 + 8 - 64, 结构顶 + 8]` 区间内没有可用地板时 L2 就会放弃该列。对于「piece 包围盒明显低于其落点」的结构（例如雪屋这类结构顶在地表之上、piece 盒顶却低于地表），L2 可能够不到地表。本轮未观察到实际影响（游戏中 4 次放置全部成功），但值得后续用实测确认。
+
 
 ---
 

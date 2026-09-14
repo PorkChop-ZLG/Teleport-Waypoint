@@ -61,6 +61,7 @@
 | E1 | `ChunkEvent.Load` 的 post 点被 **`currentlyLoading` 的 try/finally 包住**（signal 行本身在 try 块内），因此事件期间 `chunkHolder.currentlyLoading == 本区块` | `ChunkStatusTasks.java:211-218` |
 | E2 | `ServerChunkCache.getChunk` 的第一道短路是 `chunkholder.currentlyLoading != null → return`，**位于 `managedBlock` 之前** | `ServerChunkCache.java:153-159` |
 | E3 | 由 E1+E2：事件期间对本区块调 `level.setBlock(...)`（内部 → `getChunkAt` → `getChunk`）**会短路返回，不阻塞**。所以「禁止跨区块访问」是**只针对其他区块**的纪律，本区块放置是安全的 | E1+E2 |
+| **E3a** | **⚠ E3 只覆盖 `setBlock` 的第一次区块查找，不足以保证放置安全。** `UPDATE_ALL` 含 `UPDATE_NEIGHBORS` ⇒ `CollectingNeighborUpdater.MultiNeighborUpdate.runNext:123` 会同步 `level.getBlockState(邻居)`；边界列的邻居落在相邻区块，而相邻区块在 FULL 阶段**只保证到 `INITIALIZE_LIGHT`**（`ChunkPyramid` 的 `FULL` 步骤自身无 requirement，继承 `LIGHT` 的 `addRequirement(INITIALIZE_LIGHT, 1)`）⇒ 走到 `ServerChunkCache.getChunk:159` 的 `managedBlock`，等待主线程自己的邮箱 ⇒ **自死锁**。**结论：处理器内写方块必须用 `Block.UPDATE_CLIENTS`，不得用 `UPDATE_ALL`** | `Level.java:287`、`CollectingNeighborUpdater.java:122-123`、`Level.java:406-411`、`ServerChunkCache.java:153-159`、`ChunkPyramid.java:43-45` |
 | E4 | 但**其他**区块若未加载，`managedBlock` 会等主线程自己的邮箱 ⇒ 死锁。**跨区块访问仍然是硬禁止** | `ServerChunkCache.java:158-160` |
 | E5 | `LevelChunk.setBlockState` 在成功路径上**已经置 `unsaved = true`**（`:304`） | `LevelChunk.java:304` |
 | E6 | `Level.blockEntityChanged` 的实现是 `if (hasChunkAt(pos)) getChunkAt(pos).setUnsaved(true)` —— 与 E5 等效 | `Level.java:984-988` |
@@ -172,13 +173,14 @@ NeoForge.EVENT_BUS
 | F3 | **全部** `StructureManager` 查询：`startsForStructure`、`getStructureAt`、`getStructureWithPieceAt`、`getAllStructuresAt`、`fillStartsForStructure` | 全部经 `level.getChunk(..., STRUCTURE_REFERENCES)` 且 `requireChunk=true` ⇒ 强制同步加载 + 永久 `TicketType.UNKNOWN` 票 |
 | F4 | 写 `StructureStart` / `StructurePiece` / 区块的结构映射 | 会置 `unsaved` 并使区块与其持久化结构数据不同步 |
 | F5 | 遍历 piece 包围盒范围内的**其他**区块 | 落点必须在本区块内（约束 S4） |
+| **F6** | **`level.setBlock(pos, state, Block.UPDATE_ALL)`（或任何含 `UPDATE_NEIGHBORS` 的标志）** | **间接**跨区块访问：`UPDATE_NEIGHBORS` → `blockUpdated` → `CollectingNeighborUpdater.MultiNeighborUpdate.runNext:123` 同步 `level.getBlockState(邻居)`，边界列的邻居在相邻区块，而相邻区块在 FULL 阶段只保证到 `INITIALIZE_LIGHT` ⇒ `managedBlock` **自死锁**。用 `Block.UPDATE_CLIENTS`（见 E3a） |
 
 **允许且必须使用：**
 
 | 编号 | 允许项 | 理由 |
 |---|---|---|
 | A1 | `LevelChunk.getBlockState(pos)`（事件区块自身） | 纯数组读，无区块查找 |
-| A2 | `level.setBlock(pos, state, UPDATE_ALL)`，`pos` 在事件区块内 | E1+E2+E3：`currentlyLoading` 短路 |
+| A2 | `level.setBlock(pos, state, Block.UPDATE_CLIENTS)`，`pos` 在事件区块内。**必须去掉 `UPDATE_NEIGHBORS`** —— `UPDATE_ALL` 会经邻居更新级联去读相邻区块并自死锁（E3a） | E1+E2+E3a |
 | A3 | `chunk.getBlockEntity(pos)`，`pos` 是本帧刚放置的位置 | E10：此时 `pendingBlockEntities` 里绝无该 pos 的条目（该 pos 放置前已确认非 BE） |
 
 ### 2.3 其余强制纪律
@@ -738,7 +740,7 @@ if (fluid.getType() == Fluids.WATER) {
 ```
    - **读 `chunk.getBlockState` 而不是 `level.getFluidState`**（F1）。
    - 岩浆不可能到这一步（T11 第 6 条已排除），但仍**不要**给 `WATERLOGGED` 一个「否则」分支去放岩浆 —— 只认 `WATER`，其余一律 `false`。
-3. `level.setBlock(pos, state, Block.UPDATE_ALL)`。返回 false ⇒ 放弃（`UPDATE_ALL` = 3；E1–E3 保证 `getChunkAt` 短路安全）。
+3. `level.setBlock(pos, state, Block.UPDATE_CLIENTS)`。返回 false ⇒ 放弃。**不要用 `UPDATE_ALL`**：`UPDATE_NEIGHBORS` 引发的邻居更新级联会 `level.getBlockState(相邻区块)`，而相邻区块在 FULL 阶段只保证到 `INITIALIZE_LIGHT`，会自死锁（E3a）。`UPDATE_CLIENTS` = 2，仍会向客户端同步方块与光照。
 4. **写 `waypoint_id`**：
 ```java
 if (chunk.getBlockEntity(pos) instanceof WaypointBlockEntity be) {
@@ -1020,6 +1022,8 @@ gradlew.bat runGameTestServer --offline --console=plain
 | 12 | `rg "start\.getBoundingBox\(\)" src/main/java/com/zonlong/teleportwaypoint/structure/` | **0 行**（E17/E18：会把锚点列与搜索盒偏移 12 格） |
 | 13 | `rg "getOrCreateTag" src/main/java/com/zonlong/teleportwaypoint/` | **0 行**（R15） |
 | 14 | `rg -n "\.above\(1\)\|\.above\(2\)\|p\.above\(k\)" src/main/java/com/zonlong/teleportwaypoint/structure/` | 每处上方都有 `maxBuildHeight` 边界保护（R8/R16） |
+| **15** | `rg "level\.setBlock" src/main/java/com/zonlong/teleportwaypoint/structure/` | 恰好 1 行，且**唯一标志是 `Block.UPDATE_CLIENTS`**（F6/E3a） |
+| **16** | `rg "UPDATE_NEIGHBORS\|UPDATE_ALL\|UPDATE_KNOWN_SHAPE\|UPDATE_SUPPRESS_DROPS\|UPDATE_MOVE_BY_PISTON" src/main/java/com/zonlong/teleportwaypoint/structure/`，再排除掉 `StructureWaypointPlacer` 里那段**解释性注释** | **0 行命中代码**（注释必须提到 `UPDATE_ALL` 以警示，故按「非注释行」判定） |
 
 **验证：** 上表 10 条全部符合。任一条不符即回到对应任务修。
 
@@ -1153,6 +1157,7 @@ T7 ─────────────────────────�
 | R14 | 误用 `start.getBoundingBox()` 当锚点列或 L1 搜索盒 ⇒ 偏 12 格且被记忆化，测试难以发现 | **中** | 中 | E16–E18 已核实并写入 T10 的显式「不要写」清单；T16 的 `scanner_l1_highestRoofedColumn` 用不含 terrainAdaptation 的匿名 piece，能暴露偏差 |
 | R15 | 用 `structures.getOrCreateTag(...)` 判标签存在性 ⇒ 把「缺失」永久伪装成「为空」⇒ WARN 永不出现 | 中 | 低 | T13 显式列为「必须避免的坑」 |
 | R16 | `p.above(k)` 越界（除 R8 的高度上界外，还有 `roofed` 里的同类问题） | 中 | 中 | T11 的 `roofed` 循环首行就加 `p.getY() + k >= maxBuildHeight → return false` |
+| **R17** | **放置用 `UPDATE_ALL` ⇒ 邻居更新级联读相邻区块 ⇒ 主线程自死锁（已实际发生）** | **高** | **致命** | 改用 `Block.UPDATE_CLIENTS`（F6/E3a）；T17 第 15/16 条 find-all 长期钉住。**表现：服务器冻结、无崩溃、无日志、watchdog 也不报**——因为它本身就卡在 `managedBlock` 里 |
 
 ---
 

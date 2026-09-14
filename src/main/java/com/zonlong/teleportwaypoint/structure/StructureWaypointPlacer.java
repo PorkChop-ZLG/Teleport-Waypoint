@@ -17,10 +17,14 @@ import net.minecraft.world.level.material.Fluids;
  * Writes an injected waypoint into the world.
  *
  * <p>Reached only from {@code ChunkEvent.Load}, on the server main thread. The block write goes
- * through {@link ServerLevel#setBlock}, which resolves the chunk via {@code getChunkAt}; that is safe
- * here because the event fires while the chunk holder's {@code currentlyLoading} field still points
- * at the very chunk being loaded, so {@code ServerChunkCache#getChunk} short-circuits before it can
- * block on the main thread's own mailbox.
+ * through {@link ServerLevel#setBlock}, which resolves the chunk via {@code getChunkAt}. That first
+ * lookup is safe here because the event fires while the chunk holder's {@code currentlyLoading} field
+ * still points at the very chunk being loaded, so {@code ServerChunkCache#getChunk} short-circuits
+ * before it can block on the main thread's own mailbox.
+ *
+ * <p>The update flags are the dangerous part, not the write itself. See the comment on the
+ * {@code setBlock} call: neighbour updates would read blocks in adjacent chunks that are not
+ * guaranteed to be loaded, which deadlocks the main thread against itself.
  *
  * <p>Registering the block entity is deliberately left to the existing {@code onLoad()} path: the new
  * block entity is queued into {@code Level#addFreshBlockEntities} and picked up on the next tick by
@@ -59,7 +63,24 @@ public final class StructureWaypointPlacer {
             state = state.setValue(WaypointBlock.WATERLOGGED, true);
         }
 
-        if (!level.setBlock(pos, state, Block.UPDATE_ALL)) {
+        // UPDATE_CLIENTS only -- deliberately NOT Block.UPDATE_ALL.
+        //
+        // UPDATE_ALL includes UPDATE_NEIGHBORS, which makes the engine walk the six neighbours of this
+        // position and read each of their block states through Level#getBlockState. Blocks at a chunk
+        // edge reach into the adjacent chunk, and a chunk that is still generating only guarantees its
+        // horizontal neighbours are at INITIALIZE_LIGHT (ChunkPyramid.GENERATION_PYRAMID: LIGHT
+        // requires INITIALIZE_LIGHT at radius 1; the FULL step adds no requirement of its own). For a
+        // neighbour that is not yet FULL, Level#getBlockState ends up in
+        // ServerChunkCache#getChunk -> mainThreadProcessor.managedBlock, which waits on work that only
+        // the main thread can do -- and the main thread is this call. That is a self-deadlock: the
+        // server freezes with no exception and no log line.
+        //
+        // Dropping the neighbour updates is safe for this block: the waypoint has no redstone or shape
+        // dependent behaviour, and SimpleWaterloggedBlock derives its fluid state from the block state
+        // rather than from a neighbour notification. Light and client updates are unaffected, because
+        // LevelChunk#setBlockState queues its own light check and heightmap updates independently of the
+        // update flags.
+        if (!level.setBlock(pos, state, Block.UPDATE_CLIENTS)) {
             return false;
         }
 

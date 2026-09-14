@@ -8,8 +8,10 @@ import java.util.List;
 import java.util.Optional;
 
 import com.zonlong.teleportwaypoint.block.ModBlocks;
+import com.zonlong.teleportwaypoint.block.WaypointBlock;
 import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 import com.zonlong.teleportwaypoint.structure.StructureTagFilter;
+import com.zonlong.teleportwaypoint.structure.StructureWaypointPlacer;
 import com.zonlong.teleportwaypoint.structure.StructureWaypointScanner;
 import com.zonlong.teleportwaypoint.util.Naming;
 
@@ -356,6 +358,70 @@ public final class StructureWaypointGameTests {
         helper.succeed();
     }
 
+    // ------------------------------------------------------------------------------------------
+    // placer
+    // ------------------------------------------------------------------------------------------
+
+    /**
+     * Exercises the placer on a real chunk. This covers the write path that the freeze bug lived in:
+     * the placement must succeed, keep the derived id, set WATERLOGGED from the fluid, and never
+     * trigger neighbour updates (which would read blocks in adjacent chunks and can deadlock the main
+     * thread -- see the comment on the setBlock call in StructureWaypointPlacer).
+     */
+    @GameTest(template = TEMPLATE, templateNamespace = TeleportWaypoint.MODID)
+    public void placer_writesWaypointWithoutNeighbourUpdates(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = helper.absolutePos(new BlockPos(3, 4, 3));
+        fillBox(helper, 3, 3, 3, 5, 3, 5, STONE.defaultBlockState());
+
+        LevelChunk chunk = level.getChunkAt(origin);
+        String id = Naming.deriveId(ResourceLocation.parse("minecraft:end_city"));
+
+        boolean placed = StructureWaypointPlacer.place(level, chunk, origin, id, null);
+        helper.assertTrue(placed, "placer refused to write at " + origin
+                + " state=" + chunk.getBlockState(origin));
+        helper.assertTrue(chunk.getBlockState(origin).is(ModBlocks.WAYPOINT.get()),
+                "waypoint block missing after placement, found " + chunk.getBlockState(origin));
+        helper.assertTrue(chunk.getBlockEntity(origin) instanceof WaypointBlockEntity,
+                "no waypoint block entity after placement");
+        helper.assertTrue(id.equals(((WaypointBlockEntity) chunk.getBlockEntity(origin)).getId()),
+                "placement lost the derived id: "
+                        + ((WaypointBlockEntity) chunk.getBlockEntity(origin)).getId());
+
+        // Not water, so the placer must leave the waterlogged flag alone.
+        helper.assertTrue(!chunk.getBlockState(origin).getValue(WaypointBlock.WATERLOGGED),
+                "dry placement must not be waterlogged");
+
+        // Outside the event chunk the placer must refuse, so a scanner bug cannot write next door.
+        BlockPos outside = origin.offset(16, 0, 0);
+        LevelChunk otherChunk = level.getChunkAt(outside);
+        helper.assertTrue(!StructureWaypointPlacer.place(level, otherChunk, origin, id, null),
+                "placer wrote outside the chunk it claimed to target");
+        helper.succeed();
+    }
+
+    /** Water must be turned into a waterlogged waypoint rather than left as a cavity. */
+    @GameTest(template = TEMPLATE, templateNamespace = TeleportWaypoint.MODID)
+    public void placer_setsWaterloggedInWater(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = helper.absolutePos(new BlockPos(3, 8, 3));
+
+        // Floor outside the piece-free area below, then one water block at the target level.
+        fillBox(helper, 3, 7, 3, 5, 7, 5, STONE.defaultBlockState());
+        helper.setBlock(4, 8, 4, Blocks.WATER);
+
+        LevelChunk chunk = level.getChunkAt(origin);
+        BlockPos target = helper.absolutePos(new BlockPos(4, 8, 4));
+        String id = Naming.deriveId(ResourceLocation.parse("minecraft:monument"));
+
+        helper.assertTrue(StructureWaypointPlacer.place(level, chunk, target, id, null),
+                "placer refused a water target, state=" + chunk.getBlockState(target));
+        helper.assertTrue(chunk.getBlockState(target).is(ModBlocks.WAYPOINT.get()),
+                "waypoint block missing, found " + chunk.getBlockState(target));
+        helper.assertTrue(chunk.getBlockState(target).getValue(WaypointBlock.WATERLOGGED),
+                "a water target must come out waterlogged, got " + chunk.getBlockState(target));
+        helper.succeed();
+    }
     // ------------------------------------------------------------------------------------------
     // tags
     // ------------------------------------------------------------------------------------------
