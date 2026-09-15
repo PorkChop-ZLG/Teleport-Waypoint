@@ -85,12 +85,40 @@ public class WaypointBlockEntity extends BlockEntity {
         return id;
     }
 
+    /**
+     * Assigns the id and marks the block entity dirty through {@link #setChanged()}.
+     *
+     * <p>Not usable from inside {@code ChunkEvent.Load}: see {@link #setIdWithoutNeighbourUpdate(String)}.
+     */
     public void setId(String id) {
+        if (setIdWithoutNeighbourUpdate(id)) {
+            setChanged();
+        }
+    }
+
+    /**
+     * Assigns the id <em>without</em> the neighbour notification that {@link #setChanged()} derives.
+     *
+     * <p>Use this instead of {@link #setId(String)} while writing inside {@code ChunkEvent.Load}. The
+     * normal mark-dirty path ends in {@code Level#updateNeighbourForOutputSignal}, whose
+     * {@code hasChunkAt} guard only checks the neighbour's <em>ticket level</em>
+     * ({@code ServerChunkCache#chunkAbsent}) rather than whether that neighbour has finished loading,
+     * and its second hop carries no guard at all. It therefore reaches {@code Level#getBlockState} on a
+     * neighbour chunk that may still be generating, which blocks the main thread on its own mailbox and
+     * freezes the server silently.
+     *
+     * <p>Persistence is unaffected: the block write that created this block entity already set the
+     * chunk's unsaved flag, and the caller re-asserts it explicitly via
+     * {@code ChunkAccess#setUnsaved(boolean)} on the chunk it already holds.
+     *
+     * @return true when the id was accepted
+     */
+    public boolean setIdWithoutNeighbourUpdate(String id) {
         if (!isValidId(id)) {
-            return;
+            return false;
         }
         this.id = id;
-        setChanged();
+        return true;
     }
 
     public String getName() {

@@ -21,10 +21,10 @@ gradlew.bat clean build --offline --console=plain
 
 ```
 gradlew.bat runGameTestServer --offline --console=plain
-→ All 21 required tests passed :)
+→ All 22 required tests passed :)
 ```
 
-连续多次运行均通过（用于排除偶发）。覆盖的 21 个测试：
+连续多次运行均通过（用于排除偶发）。覆盖的 22 个测试：
 
 | 分组 | 测试 |
 |---|---|
@@ -33,7 +33,7 @@ gradlew.bat runGameTestServer --offline --console=plain
 | 扫描几何（5） | `scanner_picksHighestRoofedSpot`、`scanner_fallsBackToUnroofedPass`、`scanner_chunkFallbackStaysInChunk`、`scanner_invalidStartIsIgnored`、`scanner_excludesBlockEntities` |
 | 水体放置（1） | `scanner_allowsWater` |
 | 标签（4） | `tags_whitelistIsLoadedAndComplete`、`tags_blacklistCoversMineshaftMesa`、`tags_partitionEveryVanillaStructure`、`tagFilter_doesNotThrowInEitherMode` |
-| 放置器（2） | `placer_writesWaypointWithoutNeighbourUpdates`、`placer_setsWaterloggedInWater` |
+| 放置器（3） | `placer_writesWaypointWithoutNeighbourUpdates`、`placer_setsWaterloggedInWater`、`placer_idIsSetAndPersisted` |
 | 端到端 id（1） | `placedWaypointKeepsStructuredId` |
 
 > **重要：这 21 个测试全绿 _不_ 构成死锁已修复的证据。** GameTest 世界超平坦且无结构（处理器在第 4 道门就退出）、所有邻居满加载（构造不出「边界列 + 界外邻居未达 FULL」这个前提），而且主线程卡死时 `tickInternal` 停止推进 ⇒ **超时永不触发，`runGameTestServer` 会永久挂起而不是失败**。死锁的判别力验证只能用 §3.6「修复与验证证据」里的专用服务器 + RCON 对照步骤。
@@ -80,7 +80,7 @@ gradlew.bat runServer --offline --console=plain
 
 ---
 
-## 2. 设计纪律核对（14 条）
+## 2. 设计纪律核对（16 条）
 
 | # | 项 | 结果 |
 |---|---|---|
@@ -98,6 +98,8 @@ gradlew.bat runServer --offline --console=plain
 | 12 | 无 `start.getBoundingBox()`（会 `inflatedBy(12)`） | ✅ 0 处 |
 | 13 | 无 `getOrCreateTag` 误用 | ✅ 0 处 |
 | 14 | 所有 `pos.above(k)` 处有 `maxBuildHeight` 边界保护 | ✅ 2 处均有 |
+| **15** | `setChanged` / `blockEntityChanged` / `updateNeighbourForOutputSignal` 在 structure/ 内（排除注释） | ✅ **0 处命中代码**（路径 C：`setChanged()` 会经 `Level.updateNeighbourForOutputSignal` 读邻区块，见 §3.7） |
+| **16** | `level.setBlock` / `level.getBlockState` / `level.getChunkAt` / `level.getChunk(` / `level.getFluidState` / `level.getBlockEntity` 在 structure/ 内（排除注释） | ✅ **0 处命中代码**（路径 A/B；`Level` 的区块读写 API 在该包内已写不出来） |
 
 ---
 
@@ -303,7 +305,116 @@ mentions teleportwaypoint=true waypoint=true ancient_city=true block_entities=tr
 - **扫描器在结构上不可能跨区块**：`LevelChunk.getBlockState:178-211` 用 `x & 15` / `z & 15` 取址，越界只会**别名到本区块另一列**；`y` 越界直接返回 AIR。它手里根本没有 `Level`（`ChunkAccess` 只持有 `levelHeightAccessor`）。
 - **`isFaceSturdy(chunk, ...)` 对原版方块取缓存路径**，不触碰传入的 BlockGetter（只有脚手架/竹子/潜影盒等 `dynamicShape()` 方块才走实时形状），且传入的 BlockGetter 就是我们给的 `LevelChunk`。
 
-### 3.7 【严重·已修复】`Naming.key()` 无条件拼 `tpwp.` 导致旧存档锚点名全部损坏
+### 3.7 【严重·已修复】路径 C：`BlockEntity.setChanged()` → `Level.updateNeighbourForOutputSignal`
+
+> **2026-09-15 第三次事故。** §3.6 的方案 B（`chunk.setBlockState`）上线后，**沙漠神殿处依旧冻结**。根因是同一类死锁的**第三条派生路径**，与更新标志位完全无关，因此 §3.6 的两条路径被切断并不足以消除它。
+
+**症状与判定：** 与 §3.6 完全相同（服务端线程静默停止、无 crash-report、spark 报 world statistics 超时、存档无法保存只能强杀）。日志指纹：
+
+```
+[13:41:15] LocateCommand: Locating element minecraft:desert_pyramid took 2164 ms
+[13:41:15] WARN  Can't keep up! ... Running 2144ms or 42 ticks behind
+[13:41:19] DEBUG structure waypoint: placed structure=minecraft:desert_pyramid pos=BlockPos{x=3609, y=67, z=2313}
+[13:41:19] INFO  [Dev: 已将Dev传送至3600.500000, 110.501546, 2304.500000]
+          ← 服务端线程此后无任何输出
+[13:42:05] spark: Timed out waiting for world statistics
+```
+
+注意 `placed` 行**在 `setId` 之前打印**（`placed` 是 `place()` 的倒数第二句），所以日志看着"放置成功"，卡死其实发生在随后的 `setId` 内部。
+
+**根因：** `StructureWaypointPlacer.place()` 用 `waypoint.setId(waypointId)` 写 id，而 `setId` 内部调 `setChanged()`：
+
+```
+StructureWaypointPlacer.place()          waypoint.setId(waypointId)
+WaypointBlockEntity.setId()                  setChanged()
+BlockEntity.setChanged():193                 setChanged(this.level, this.worldPosition, this.blockState)
+BlockEntity.setChanged(l,p,s):200            level.updateNeighbourForOutputSignal(pos, state.getBlock())
+Level.updateNeighbourForOutputSignal:1125    for (Direction direction : Direction.values()) {
+                                  :1127        if (this.hasChunkAt(blockpos)) {
+                                  :1128            BlockState bs = this.getBlockState(blockpos);   ★
+                                  :1130            if (bs.isRedstoneConductor(...)) {
+                                  :1132                bs = this.getBlockState(blockpos);           ★ 第二跳无守卫
+Level.getBlockState:410                          → getChunk(x, z, ChunkStatus.FULL)   // requireChunk = true
+ServerChunkCache.getChunk:158-159                this.mainThreadProcessor.managedBlock(f::isDone);  // ★ 永久阻塞
+```
+
+**为什么 `hasChunkAt` 拦不住（关键）：**
+
+```java
+// ServerChunkCache:251-252
+private boolean chunkAbsent(ChunkHolder h, int status) {
+    return h == null || h.getTicketLevel() > status;
+}
+```
+
+`hasChunkAt` 只比较**票级够不够到 FULL**，**不检查该区块是否已跑完 FULL**。一个正在生成、票级已达标的邻区块会**通过**守卫，紧接着 `getBlockState` 就发起 `requireChunk = true` 的同步补全，落到 `managedBlock` —— 等主线程自己的邮箱，而主线程正在处理器里。`:1132` 的第二跳更是**完全没有守卫**。
+
+**为什么与更新标志位无关：** 这条链走 `BlockEntity` → `Level.updateNeighbourForOutputSignal`，**不经过 `Level#markAndNotifyBlock`**，所以 `UPDATE_ALL` / `UPDATE_CLIENTS` 的区别、乃至改用 `chunk.setBlockState` 都影响不到它。这就是 §3.6 的方案 B 修不掉它的原因。
+
+**为什么偏偏是沙漠神殿、为什么前三轮没复现：** 需要「落点所在列的水平邻居中，存在票级达标但 FULL 未完成的区块」这个精确时序。沙漠神殿是 21×21 的 `SinglePieceStructure`，piece 盒跨多区块，而扫描器第一排序键是「贴近 piece 中心」，落点被推到贴近区块边界；再叠加 `/locate` 刚造成的 2.1 秒生成积压，界外邻居处于该窗口的概率最高。**验证时的宽域 forceload 会把邻居提前加载好，从而永远碰不到这个窗口** —— 这正是 §3.6 的验证方式没能发现它的原因（教训）。
+
+**修复（方案 A）：** 让注入路径不再触发 `setChanged()`。`setChanged()` 做两件事，只有一件是需要的：
+
+| `setChanged()` 的动作 | 处理 |
+|---|---|
+| `Level.blockEntityChanged` → `getChunkAt` → `setUnsaved(true)`（标脏） | 换成 `ChunkAccess#setUnsaved(boolean)`（public，`ChunkAccess.java:269`），作用在**已持有的 chunk** 上，`Level` 不参与 |
+| `Level.updateNeighbourForOutputSignal`（通知邻居红石输出变化） | **整个去掉** —— 锚点方块没有红石输出，邻居无可观察 |
+
+新增 `WaypointBlockEntity.setIdWithoutNeighbourUpdate(String)`（保留 `isValidId` 校验，不置脏），`setId` 改为调用它后再 `setChanged()`，校验逻辑仍只有一份。放置器改用新方法并显式 `chunk.setUnsaved(true)`。
+
+**参照系：** `WorldGenRegion.setBlock:275-284` 就是 `chunkaccess.setBlockState(...)` + `level.onBlockStateChange(...)`，全程不调 `setChanged()`。也就是说"生成期不置脏"正是引擎自己的做法，方案 A 是贴合引擎而非绕开它。
+
+**语义代价（必须接受）：** `updateNeighbourForOutputSignal` 被去掉。对当前锚点方块无影响。**若将来给锚点加红石/比较器可读输出，此决定必须重新评估。**
+
+**修复位置：** `block/entity/WaypointBlockEntity.java`（新增方法 + `setId` 改一行）、`structure/StructureWaypointPlacer.java`（尾部写入改为新方法 + `chunk.setUnsaved(true)`）。
+
+#### 修复与验证证据（2026-09-15，方案 A）
+
+**结构性核对（本次的核心防线）：**
+
+```
+rg 'setChanged|blockEntityChanged|updateNeighbourForOutputSignal|level\.setBlock|level\.getBlockState|
+    level\.getChunkAt|level\.getChunk\(|level\.getFluidState|level\.getBlockEntity'  structure/
+（排除注释行）→ 0 处命中
+```
+
+`structure/` 包内已经不存在任何能经 `Level` 访问区块的调用 —— 三条路径（A/B/C）从同一处一起消失，而不是逐个堵。
+
+**运行时对照（窄域，这是唯一有判别力的方式）：**
+
+```
+RCON> locate structure minecraft:desert_pyramid   →  [1136, ~, -7584]
+       （该次 locate 造成 16242 ms 卡顿 + "Can't keep up! Running 16237ms or 324 ticks behind"
+         —— 正是用户现场那个前置条件）
+RCON> forceload add 1136 -7584 1136 -7584        →  Marked chunk [71, -474]
+[Server thread/DEBUG] structure waypoint: placed structure=minecraft:desert_pyramid pos=BlockPos{x=1145, y=63, z=-7575}
+RCON> forceload add 1120 -7600 1152 -7568        →  Marked 8 chunks   ← placed 之后服务端继续处理命令
+RCON> time query gametime                        →  727 → 1030 → 1531   （持续推进）
+```
+
+**再叠加 4 轮「卸载 / 存档 / 重新加载」循环**（模拟玩家离开再回来）：
+
+```
+cycle 1  unload → save → load 24 chunks → gametime 2410
+cycle 2  ...                          → gametime 3059
+cycle 3  ...                          → gametime 3705
+cycle 4  ...                          → gametime 4350
+```
+
+全程无冻结，`time query gametime` 稳定推进（每轮约 640 tick / 27 s，符合 20 TPS）。
+
+**落盘证明（修复后 id 真的持久化了）：**
+
+```
+save-all flush 后扫描 r.2.-15.mca：
+chunk(71,-474) inflated=7071  mentions teleportwaypoint=true waypoint=true block_entities=true
+```
+
+**新增回归测试（22 个 GameTest 全绿）：**
+- `placer_idIsSetAndPersisted` —— 断言 id 已写入 BE、**chunk 处于 unsaved 状态**（否则 id 不会落盘）、以及 `saveWithoutMetadata` 的 NBT 里确实带 `waypoint_id`；同时断言非法 id 仍被拒绝且不覆盖已存 id。
+- `placer_setsWaterloggedInWater` —— 修正 fixture：原先"水面下方是空气"的水源会在测试跑动前流走（实测偶发失败），改为**贴地的一格深水盆**，并加一条 fixture 自检断言。
+
+### 3.8 【严重·已修复】`Naming.key()` 无条件拼 `tpwp.` 导致旧存档锚点名全部损坏
 
 **症状：** 0.4.0 里所有**旧存档**的锚点显示名都变成 "Unnamed Waypoint"（或裸键），即设计文档 §7.3 与验收表承诺的「旧锚点名字不变」实际是**假的**。
 
@@ -332,7 +443,7 @@ mentions teleportwaypoint=true waypoint=true ancient_city=true block_entities=tr
 
 **验证：** 新增 GameTest `naming_legacyIdsStillNameThemselves` —— 13 个旧裸 id 逐个断言 `modernKey`/`legacyKey` 形态，并断言 `displayName()` 的回退文本**不得**退化为 `EMPTY_FALLBACK_NAME` 且必须等于 `humanize(id)`。修复前该断言会在 13 个 id 上全部失败。
 
-### 3.8 遗留观察（未修改，供后续评估）
+### 3.9 遗留观察（未修改，供后续评估）
 
 L2 兜底扫描的起点是「结构最高 piece 顶部 + 8」，配合 64 格上限，意味着当某列在 `[结构顶 + 8 - 64, 结构顶 + 8]` 区间内没有可用地板时 L2 就会放弃该列。对于「piece 包围盒明显低于其落点」的结构（例如雪屋这类结构顶在地表之上、piece 盒顶却低于地表），L2 可能够不到地表。本轮未观察到实际影响（游戏中多次放置全部成功），但值得后续用实测确认。
 

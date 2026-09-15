@@ -460,19 +460,72 @@ public final class StructureWaypointGameTests {
         helper.succeed();
     }
 
-    /** Water must be turned into a waterlogged waypoint rather than left as a cavity. */
+    /**
+     * Pins the persistence contract that the injection path relies on.
+     *
+     * <p>Placement assigns the id through {@code setIdWithoutNeighbourUpdate} and then re-asserts the
+     * chunk's unsaved flag, precisely so that no {@code setChanged()} (and therefore no
+     * {@code Level#updateNeighbourForOutputSignal}) happens inside {@code ChunkEvent.Load}. This test
+     * checks the two halves of that contract: the id really is on the block entity, the chunk really is
+     * marked unsaved so it will be written, and the id survives a save/load of the block entity.
+     */
+    @GameTest(template = TEMPLATE, templateNamespace = TeleportWaypoint.MODID)
+    public void placer_idIsSetAndPersisted(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos origin = helper.absolutePos(new BlockPos(3, 12, 3));
+        fillBox(helper, 3, 11, 3, 5, 11, 5, STONE.defaultBlockState());
+
+        LevelChunk chunk = level.getChunkAt(origin);
+        String id = Naming.deriveId(ResourceLocation.parse("minecraft:desert_pyramid"));
+
+        helper.assertTrue(StructureWaypointPlacer.place(level, chunk, origin, id, null),
+                "placer refused the target, state=" + chunk.getBlockState(origin));
+        helper.assertTrue(chunk.getBlockEntity(origin) instanceof WaypointBlockEntity,
+                "no block entity after placement");
+        WaypointBlockEntity waypoint = (WaypointBlockEntity) chunk.getBlockEntity(origin);
+
+        helper.assertTrue(id.equals(waypoint.getId()),
+                "id was not stored, expected " + id + " got " + waypoint.getId());
+
+        // The chunk must be dirty, or the id would never be written to disk.
+        helper.assertTrue(chunk.isUnsaved(),
+                "chunk was left clean after injection, so the waypoint id would not persist");
+
+        // Round-trip the block entity through NBT the way a chunk save would.
+        var registries = level.registryAccess();
+        net.minecraft.nbt.CompoundTag tag = waypoint.saveWithoutMetadata(registries);
+        helper.assertTrue(id.equals(tag.getString("waypoint_id")),
+                "saved NBT does not carry the waypoint id, got '" + tag.getString("waypoint_id") + "'");
+
+        // The escape hatch must still validate: a bogus id must be refused, not stored silently.
+        helper.assertTrue(!waypoint.setIdWithoutNeighbourUpdate("NOT A VALID ID"),
+                "setIdWithoutNeighbourUpdate accepted an invalid id");
+        helper.assertTrue(id.equals(waypoint.getId()), "a rejected id must not overwrite the stored one");
+        helper.succeed();
+    }
+
+    /**
+     * Water must be turned into a waterlogged waypoint rather than left as a cavity.
+     *
+     * <p>The floor is directly beneath the water on purpose: a water source with air below it simply
+     * flows away before the placer runs, which is what made an earlier version of this fixture flaky.
+     * A one-deep basin resting on a solid floor is stable.
+     */
     @GameTest(template = TEMPLATE, templateNamespace = TeleportWaypoint.MODID)
     public void placer_setsWaterloggedInWater(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos origin = helper.absolutePos(new BlockPos(3, 8, 3));
 
-        // Floor outside the piece-free area below, then one water block at the target level.
+        // 3x3 stone floor at y+7 with one stable water layer directly on top of it.
         fillBox(helper, 3, 7, 3, 5, 7, 5, STONE.defaultBlockState());
-        helper.setBlock(4, 8, 4, Blocks.WATER);
+        fillBox(helper, 3, 8, 3, 5, 8, 5, Blocks.WATER.defaultBlockState());
 
         LevelChunk chunk = level.getChunkAt(origin);
         BlockPos target = helper.absolutePos(new BlockPos(4, 8, 4));
         String id = Naming.deriveId(ResourceLocation.parse("minecraft:monument"));
+
+        helper.assertTrue(chunk.getBlockState(target).getFluidState().is(net.minecraft.world.level.material.Fluids.WATER),
+                "fixture is wrong: the water target drained away, found " + chunk.getBlockState(target));
 
         helper.assertTrue(StructureWaypointPlacer.place(level, chunk, target, id, null),
                 "placer refused a water target, state=" + chunk.getBlockState(target));
@@ -482,6 +535,7 @@ public final class StructureWaypointGameTests {
                 "a water target must come out waterlogged, got " + chunk.getBlockState(target));
         helper.succeed();
     }
+
     // ------------------------------------------------------------------------------------------
     // tags
     // ------------------------------------------------------------------------------------------

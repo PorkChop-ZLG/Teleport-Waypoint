@@ -121,7 +121,28 @@ public final class StructureWaypointPlacer {
         }
 
         // Writes only the id, never the uid: getUid() lazily generates a unique value later.
-        waypoint.setId(waypointId);
+        //
+        // NOT waypoint.setId(...). That marks the block entity dirty through BlockEntity#setChanged,
+        // which calls Level#updateNeighbourForOutputSignal. Its hasChunkAt guard only compares the
+        // neighbour's ticket level (ServerChunkCache#chunkAbsent), not whether the neighbour has
+        // finished loading, and its second hop has no guard at all -- so it can reach
+        // Level#getBlockState on a chunk that is still generating and deadlock the main thread inside
+        // ChunkEvent.Load. That is a third derived path, independent of the update flags that
+        // Level#setBlock was removed for.
+        //
+        // setChanged() does two things; only one is needed here:
+        //   - Level#blockEntityChanged -> getChunkAt(pos) -> setUnsaved(true): replaced below by
+        //     ChunkAccess#setUnsaved on the chunk we already hold, so Level stays out of it;
+        //   - Level#updateNeighbourForOutputSignal: dropped outright. The waypoint has no redstone
+        //     output, so no neighbour can observe anything from this change.
+        // If the waypoint ever gains a redstone/analogue output, this decision must be revisited.
+        if (!waypoint.setIdWithoutNeighbourUpdate(waypointId)) {
+            StructureWaypointDebug.debug("structure waypoint: rejected waypoint id pos={} id={}", pos, waypointId);
+            return false;
+        }
+        // LevelChunk#setBlockState already set this, so it is redundant today; it is re-asserted
+        // explicitly so persisting the id never depends on that implementation detail.
+        chunk.setUnsaved(true);
         StructureWaypointDebug.placed(structureId, pos, state.getValue(WaypointBlock.WATERLOGGED));
         return true;
     }
