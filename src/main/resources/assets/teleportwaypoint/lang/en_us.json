@@ -29,6 +29,11 @@
   "chat.teleportwaypoint.teleport_cooldown": "You are teleporting too quickly! Please wait a moment.",
 
   "tpwp.empty": "Unnamed Waypoint",
+  "tpwp.minecraft.village_plains": "Plains Village",
+  "tpwp.minecraft.village_desert": "Desert Village",
+  "tpwp.minecraft.village_savanna": "Savanna Village",
+  "tpwp.minecraft.village_snowy": "Snowy Village",
+  "tpwp.minecraft.village_taiga": "Taiga Village",
   "tpwp.minecraft.ancient_city": "Ancient City",
   "tpwp.minecraft.bastion_remnant": "Bastion Remnant",
   "tpwp.minecraft.desert_pyramid": "Desert Pyramid",
@@ -38,6 +43,7 @@
   "tpwp.minecraft.jungle_pyramid": "Jungle Temple",
   "tpwp.minecraft.mansion": "Woodland Mansion",
   "tpwp.minecraft.monument": "Ocean Monument",
+  "tpwp.minecraft.pillager_outpost": "Pillager Outpost",
   "tpwp.minecraft.stronghold": "Stronghold",
   "tpwp.minecraft.swamp_hut": "Swamp Hut",
   "tpwp.minecraft.trial_chambers": "Trial Chambers",
@@ -67,10 +73,12 @@
 
   "teleportwaypoint.configuration.common.structureWaypoints": "Structure Waypoints",
   "teleportwaypoint.configuration.common.structureWaypoints.tooltip": "Controls which structures receive a waypoint automatically when their chunk is first generated.",
+  "teleportwaypoint.configuration.common.structureWaypoints.enabled": "Enable Structure Waypoints",
+  "teleportwaypoint.configuration.common.structureWaypoints.enabled.tooltip": "Master switch for automatic waypoint placement in structures. When off, chunk loading does no structure waypoint work at all.§c Changing it requires a server restart!§r",
   "teleportwaypoint.configuration.common.structureWaypoints.mode": "Structure List Mode",
   "teleportwaypoint.configuration.common.structureWaypoints.mode.tooltip": "WHITELIST places waypoints only in structures listed by the data pack tag teleportwaypoint:waypoint_whitelist. BLACKLIST places waypoints in every structure except those listed by teleportwaypoint:waypoint_blacklist. Both lists are data pack tags and can be extended by other data packs.",
   "teleportwaypoint.configuration.common.structureWaypoints.debugMode": "Debug Logging",
-  "teleportwaypoint.configuration.common.structureWaypoints.debugMode.tooltip": "Writes extra English-only DEBUG log lines for structure waypoint injection. Leave off for normal play.",
+  "teleportwaypoint.configuration.common.structureWaypoints.debugMode.tooltip": "Writes extra DEBUG log lines for structure waypoint injection. Leave off for normal play.",
 
   "teleportwaypoint.configuration.common.optionalDataPacks": "Optional Data Packs",
   "teleportwaypoint.configuration.common.optionalDataPacks.tooltip": "Controls whether the vanilla and YUNG structure datapacks are enabled by default in new worlds.",

@@ -10,8 +10,10 @@
     "minecraft:jungle_pyramid",
     "minecraft:mansion",
     "minecraft:monument",
+    "minecraft:pillager_outpost",
     "minecraft:stronghold",
     "minecraft:swamp_hut",
-    "minecraft:trial_chambers"
+    "minecraft:trial_chambers",
+    "#minecraft:village"
   ]
 }

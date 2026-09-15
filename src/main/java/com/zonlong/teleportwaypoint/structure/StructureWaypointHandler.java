@@ -55,6 +55,15 @@ public final class StructureWaypointHandler {
     }
 
     public static void onChunkLoad(ChunkEvent.Load event) {
+        // Gate 0: the master switch, deliberately the very first check so that turning the feature off
+        // leaves essentially nothing on the chunk-load path -- no instanceof, no chunk structure lookup,
+        // no logging. ModConfigSpec.ConfigValue#get() is a cached field read, so this is nanoseconds.
+        //
+        // Because it sits ahead of every other gate, toggling it only takes effect after a server
+        // restart. That is the documented trade-off for making the off state this cheap.
+        if (!Boolean.TRUE.equals(CommonConfig.ENABLE_STRUCTURE_WAYPOINTS.get())) {
+            return;
+        }
         // Gate 1: server side only. isNewChunk() is documented to be true only on the logical server.
         if (!(event.getLevel() instanceof ServerLevel level)) {
             return;

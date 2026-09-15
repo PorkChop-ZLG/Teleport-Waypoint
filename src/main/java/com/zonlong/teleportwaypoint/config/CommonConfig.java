@@ -11,6 +11,7 @@ public final class CommonConfig {
     public static final ModConfigSpec.BooleanValue DEFAULT_ENABLE_STRUCTURE_WAYPOINTS;
     public static final ModConfigSpec.BooleanValue DEFAULT_ENABLE_YUNG_STRUCTURE_WAYPOINTS;
     public static final ModConfigSpec.EnumValue<StructureWaypointMode> STRUCTURE_WAYPOINT_MODE;
+    public static final ModConfigSpec.BooleanValue ENABLE_STRUCTURE_WAYPOINTS;
     public static final ModConfigSpec.BooleanValue DEBUG_MODE;
     public static final ModConfigSpec SPEC;
 
@@ -43,6 +44,14 @@ public final class CommonConfig {
 
         builder.translation("teleportwaypoint.configuration.common.structureWaypoints");
         builder.push("structureWaypoints");
+
+        ENABLE_STRUCTURE_WAYPOINTS = builder
+                .comment("Master switch for automatic waypoint placement in structures.",
+                        "When false, chunk loading does no structure waypoint work at all.",
+                        "This is read as the very first gate of the chunk load handler, so changing it",
+                        "requires a server restart to take effect.")
+                .translation("teleportwaypoint.configuration.common.structureWaypoints.enabled")
+                .define("enabled", true);
 
         STRUCTURE_WAYPOINT_MODE = builder
                 .comment("\"WHITELIST\" = only place in structures listed by teleportwaypoint:waypoint_whitelist",

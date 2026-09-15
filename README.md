@@ -106,20 +106,28 @@
 
 | 标签 | 内容 | 对应模式 |
 |---|---|---|
-| `teleportwaypoint:waypoint_whitelist` | 12 个已适配结构 | `WHITELIST`（默认） |
-| `teleportwaypoint:waypoint_blacklist` | 22 个未适配结构（压成 9 条） | `BLACKLIST` |
+| `teleportwaypoint:waypoint_whitelist` | 13 条已适配结构（展开为 18 个结构，含 5 种村庄） | `WHITELIST`（默认） |
+| `teleportwaypoint:waypoint_blacklist` | 7 条被排除的结构（展开为 16 个结构） | `BLACKLIST` |
 
 文件位于 `data/teleportwaypoint/tags/worldgen/structure/`，两者都是 `"replace": false`，因此**其他数据包与整合包可以追加条目而不覆盖本模组的文件**。
 
-配置项只决定用哪张名单：
+白名单里的村庄写的是**标签引用** `#minecraft:village`，一行覆盖 5 个村庄变体（平原/沙漠/热带草原/雪原/针叶林）。
+
+配置项决定是否启用、以及用哪张名单：
 
 ```toml
 [structureWaypoints]
-    # "WHITELIST" = only place in structures listed by teleportwaypoint:waypoint_whitelist
-    # "BLACKLIST" = place in every structure EXCEPT those listed by teleportwaypoint:waypoint_blacklist
+    # 总开关。关闭后区块加载完全不进行结构锚点相关工作。
+    # 该开关是处理器读取的第一道门，因此修改后需重启服务器才生效。
+    enabled = true
+
+    # "WHITELIST" = 只为 waypoint_whitelist 列出的结构放置
+    # "BLACKLIST" = 为 waypoint_blacklist 所列之外的一切结构放置
     mode = "WHITELIST"
     debugMode = false
 ```
+
+> 关掉 `enabled` 后，区块加载路径上只剩「一次事件派发 + 一次配置布尔读取」，不会有任何区块结构查询、日志或分配。
 
 **「标签缺失」与「标签为空」是两件不同的事：**
 
@@ -127,6 +135,8 @@
 |---|---|---|
 | 标签**不存在**（数据包被禁用／文件缺失） | 白名单 ⇒ 一个都不放；黑名单 ⇒ 全部放 | WARN 一次 |
 | 标签**存在但为空**（`"values": []`） | 同上 | **不记日志**（这是合法配置） |
+
+> 注意黑名单缺失时的后果：BLACKLIST 模式下会**放行一切结构**。若你依赖黑名单排除某些结构，请确认本模组的数据包处于启用状态。
 
 ### 为新结构接入（整合包作者）
 

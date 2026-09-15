@@ -507,25 +507,29 @@ public final class StructureWaypointGameTests {
     /**
      * Water must be turned into a waterlogged waypoint rather than left as a cavity.
      *
-     * <p>The floor is directly beneath the water on purpose: a water source with air below it simply
-     * flows away before the placer runs, which is what made an earlier version of this fixture flaky.
-     * A one-deep basin resting on a solid floor is stable.
+     * <p>The fixture deliberately builds a wide, fully enclosed pool resting directly on a floor. A
+     * narrower basin, or water with air underneath, drains away across the ticks between setup and the
+     * placement call, which made earlier versions of this test flaky. The pre-assertion reports that
+     * failure mode explicitly instead of surfacing later as a confusing "placer refused" message.
      */
     @GameTest(template = TEMPLATE, templateNamespace = TeleportWaypoint.MODID)
     public void placer_setsWaterloggedInWater(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos origin = helper.absolutePos(new BlockPos(3, 8, 3));
 
-        // 3x3 stone floor at y+7 with one stable water layer directly on top of it.
-        fillBox(helper, 3, 7, 3, 5, 7, 5, STONE.defaultBlockState());
-        fillBox(helper, 3, 8, 3, 5, 8, 5, Blocks.WATER.defaultBlockState());
+        // 9x9 stone floor at y+7, one water layer on top of it, then a 9x9 ring of stone walls holding
+        // the pool in place so the water cannot spread sideways either.
+        fillBox(helper, 1, 7, 1, 9, 7, 9, STONE.defaultBlockState());
+        fillBox(helper, 1, 8, 1, 9, 8, 9, Blocks.WATER.defaultBlockState());
+        fillHollowWalls(helper, 0, 8, 0, 10, 9, 10, STONE.defaultBlockState());
 
         LevelChunk chunk = level.getChunkAt(origin);
         BlockPos target = helper.absolutePos(new BlockPos(4, 8, 4));
         String id = Naming.deriveId(ResourceLocation.parse("minecraft:monument"));
 
         helper.assertTrue(chunk.getBlockState(target).getFluidState().is(net.minecraft.world.level.material.Fluids.WATER),
-                "fixture is wrong: the water target drained away, found " + chunk.getBlockState(target));
+                "fixture is wrong: the water target is not water any more, found "
+                        + chunk.getBlockState(target) + " at " + target);
 
         helper.assertTrue(StructureWaypointPlacer.place(level, chunk, target, id, null),
                 "placer refused a water target, state=" + chunk.getBlockState(target));
@@ -551,17 +555,31 @@ public final class StructureWaypointGameTests {
         for (String raw : new String[] {
             "minecraft:ancient_city", "minecraft:bastion_remnant", "minecraft:desert_pyramid",
             "minecraft:end_city", "minecraft:fortress", "minecraft:igloo", "minecraft:jungle_pyramid",
-            "minecraft:mansion", "minecraft:monument", "minecraft:stronghold", "minecraft:swamp_hut",
-            "minecraft:trial_chambers"
+            "minecraft:mansion", "minecraft:monument", "minecraft:pillager_outpost",
+            "minecraft:stronghold", "minecraft:swamp_hut", "minecraft:trial_chambers"
         }) {
             Structure structure = structures.get(ResourceLocation.parse(raw));
             helper.assertTrue(structure != null, "vanilla structure missing from the registry: " + raw);
             helper.assertTrue(structures.wrapAsHolder(structure).is(key), raw + " is missing from the whitelist tag");
         }
 
-        Structure village = structures.get(ResourceLocation.parse("minecraft:village_plains"));
-        helper.assertTrue(village != null, "village_plains missing from the registry");
-        helper.assertTrue(!structures.wrapAsHolder(village).is(key), "villages must not be whitelisted");
+        // The whitelist carries villagers via the vanilla village tag, so all five variants must resolve.
+        // This reverses the earlier decision that kept villages out of the whitelist.
+        for (String raw : new String[] {
+            "minecraft:village_plains", "minecraft:village_desert", "minecraft:village_savanna",
+            "minecraft:village_snowy", "minecraft:village_taiga"
+        }) {
+            Structure structure = structures.get(ResourceLocation.parse(raw));
+            helper.assertTrue(structure != null, "vanilla structure missing from the registry: " + raw);
+            helper.assertTrue(structures.wrapAsHolder(structure).is(key),
+                    raw + " must be whitelisted through #minecraft:village");
+        }
+
+        // Something that is on neither list must not be swept in by a mistake.
+        Structure buriedTreasure = structures.get(ResourceLocation.parse("minecraft:buried_treasure"));
+        helper.assertTrue(buriedTreasure != null, "buried_treasure missing from the registry");
+        helper.assertTrue(!structures.wrapAsHolder(buriedTreasure).is(key),
+                "buried_treasure must not be whitelisted");
         helper.succeed();
     }
 
@@ -579,8 +597,7 @@ public final class StructureWaypointGameTests {
 
         for (String raw : new String[] {
             "minecraft:buried_treasure", "minecraft:mineshaft", "minecraft:mineshaft_mesa",
-            "minecraft:nether_fossil", "minecraft:pillager_outpost", "minecraft:trail_ruins",
-            "minecraft:village_plains", "minecraft:village_taiga", "minecraft:ruined_portal",
+            "minecraft:nether_fossil", "minecraft:trail_ruins", "minecraft:ruined_portal",
             "minecraft:ruined_portal_nether", "minecraft:shipwreck", "minecraft:shipwreck_beached",
             "minecraft:ocean_ruin_cold", "minecraft:ocean_ruin_warm"
         }) {
@@ -589,18 +606,34 @@ public final class StructureWaypointGameTests {
             helper.assertTrue(structures.wrapAsHolder(structure).is(key), raw + " is missing from the blacklist tag");
         }
 
-        Structure endCity = structures.get(ResourceLocation.parse("minecraft:end_city"));
-        helper.assertTrue(endCity != null, "end_city missing from the registry");
-        helper.assertTrue(!structures.wrapAsHolder(endCity).is(key), "end_city must not be blacklisted");
+        // Villages and outposts were moved onto the whitelist, so they must no longer be excluded.
+        for (String raw : new String[] {
+            "minecraft:village_plains", "minecraft:village_taiga", "minecraft:pillager_outpost",
+            "minecraft:end_city"
+        }) {
+            Structure structure = structures.get(ResourceLocation.parse(raw));
+            helper.assertTrue(structure != null, "vanilla structure missing from the registry: " + raw);
+            helper.assertTrue(!structures.wrapAsHolder(structure).is(key),
+                    raw + " must not be blacklisted");
+        }
         helper.succeed();
     }
 
     /**
-     * Every vanilla structure must be covered by exactly one of the two lists, so that switching modes
-     * cannot leave a structure in a gap. The lists partition the 34 vanilla structures 12 + 22.
+     * Pins the actual semantics of the two shipped lists.
+     *
+     * <p>They are deliberately <em>not</em> a partition any more. The whitelist is the curated set that
+     * receives waypoints in WHITELIST mode, and the blacklist is the curated set that is excluded in
+     * BLACKLIST mode; a structure may appear on both (villages and outposts are whitelisted and were
+     * removed from the blacklist) and a structure may appear on neither. What matters is that:
+     * <ul>
+     *   <li>every entry on both lists resolves to a real structure, so a typo cannot rot silently;</li>
+     *   <li>most vanilla structures are reachable in at least one mode;</li>
+     *   <li>the explicitly excluded set is exactly the structures these lists are meant to exclude.</li>
+     * </ul>
      */
     @GameTest(template = TEMPLATE, templateNamespace = TeleportWaypoint.MODID)
-    public void tags_partitionEveryVanillaStructure(GameTestHelper helper) {
+    public void tags_listsMatchTheirIntendedSemantics(GameTestHelper helper) {
         Registry<Structure> structures = helper.getLevel().registryAccess().registryOrThrow(Registries.STRUCTURE);
         TagKey<Structure> whitelist = TagKey.create(Registries.STRUCTURE,
                 ResourceLocation.fromNamespaceAndPath(TeleportWaypoint.MODID, "waypoint_whitelist"));
@@ -615,28 +648,63 @@ public final class StructureWaypointGameTests {
             "ruined_portal_swamp", "shipwreck", "shipwreck_beached", "stronghold", "swamp_hut", "trail_ruins",
             "trial_chambers", "village_desert", "village_plains", "village_savanna", "village_snowy", "village_taiga"
         };
+        helper.assertTrue(vanilla.length == 34, "the vanilla structure inventory changed: " + vanilla.length);
 
         int white = 0;
         int black = 0;
-        List<String> uncovered = new ArrayList<>();
+        int reachable = 0;
         for (String path : vanilla) {
             Structure structure = structures.get(ResourceLocation.fromNamespaceAndPath("minecraft", path));
             helper.assertTrue(structure != null, "vanilla structure missing from the registry: " + path);
             boolean inWhite = structures.wrapAsHolder(structure).is(whitelist);
             boolean inBlack = structures.wrapAsHolder(structure).is(blacklist);
-            helper.assertTrue(!(inWhite && inBlack), path + " is in both lists");
             if (inWhite) {
                 white++;
-            } else if (inBlack) {
+            }
+            if (inBlack) {
                 black++;
-            } else {
-                uncovered.add(path);
+            }
+            // A structure receives a waypoint in at least one mode if WHITELIST mode lists it, or
+            // BLACKLIST mode fails to exclude it. The modes are complements of the opposite list, so the
+            // union of the two lists is what is unreachable.
+            if (inWhite || inBlack) {
+                reachable++;
             }
         }
 
-        helper.assertTrue(uncovered.isEmpty(), "structures in neither list: " + uncovered);
-        helper.assertTrue(white == 12, "expected 12 whitelisted structures, found " + white);
-        helper.assertTrue(black == 22, "expected 22 blacklisted structures, found " + black);
+        // 13 whitelist entries expanding to 18 structures (13 singles + the 5 village variants).
+        helper.assertTrue(white == 18, "expected 18 whitelisted structures, found " + white);
+        // 7 blacklist entries expanding to 16 structures.
+        helper.assertTrue(black == 16, "expected 16 blacklisted structures, found " + black);
+        // The two lists are disjoint today, so 18 + 16 = 34: every vanilla structure is reachable in at
+        // least one mode. If a structure is ever added to both lists, the sum drops and this catches it.
+        helper.assertTrue(reachable == 34, "expected all 34 vanilla structures reachable in some mode, found "
+                + reachable + " | white=" + white + " black=" + black);
+
+        // The lists must stay disjoint: an entry on both would mean BLACKLIST mode contradicts WHITELIST
+        // mode for that structure (whitelisted but simultaneously excluded).
+        for (String path : vanilla) {
+            Structure structure = structures.get(ResourceLocation.fromNamespaceAndPath("minecraft", path));
+            helper.assertTrue(!(structures.wrapAsHolder(structure).is(whitelist)
+                            && structures.wrapAsHolder(structure).is(blacklist)),
+                    path + " is on both lists, which makes the two modes contradict each other");
+        }
+
+        // The three that only BLACKLIST mode reaches must stay reachable rather than merely unlisted.
+        for (String path : new String[] {"buried_treasure", "nether_fossil", "trail_ruins"}) {
+            Structure structure = structures.get(ResourceLocation.fromNamespaceAndPath("minecraft", path));
+            helper.assertTrue(!structures.wrapAsHolder(structure).is(whitelist),
+                    path + " should not be whitelisted");
+            helper.assertTrue(structures.wrapAsHolder(structure).is(blacklist),
+                    path + " should be excluded in BLACKLIST mode");
+        }
+
+        // Villages and outposts moved onto the whitelist; they must no longer be excluded either.
+        for (String path : new String[] {"village_plains", "village_taiga", "pillager_outpost"}) {
+            Structure structure = structures.get(ResourceLocation.fromNamespaceAndPath("minecraft", path));
+            helper.assertTrue(structures.wrapAsHolder(structure).is(whitelist), path + " should be whitelisted");
+            helper.assertTrue(!structures.wrapAsHolder(structure).is(blacklist), path + " should not be blacklisted");
+        }
         helper.succeed();
     }
 

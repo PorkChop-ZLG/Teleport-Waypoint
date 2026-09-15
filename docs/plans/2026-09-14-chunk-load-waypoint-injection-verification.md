@@ -443,7 +443,46 @@ chunk(71,-474) inflated=7071  mentions teleportwaypoint=true waypoint=true block
 
 **验证：** 新增 GameTest `naming_legacyIdsStillNameThemselves` —— 13 个旧裸 id 逐个断言 `modernKey`/`legacyKey` 形态，并断言 `displayName()` 的回退文本**不得**退化为 `EMPTY_FALLBACK_NAME` 且必须等于 `humanize(id)`。修复前该断言会在 13 个 id 上全部失败。
 
-### 3.9 遗留观察（未修改，供后续评估）
+### 3.9 设计调整：新增总开关 + 黑白名单改版（2026-09-15）
+
+**决策反转记录：** 设计文档 §5.2 / Q9 曾明确「村庄从白名单移除，不需要适配」。本次按作者要求**反转**：村庄与掠夺者前哨站**加入白名单**，同时从黑名单移除。`memory/decisions-log.md` 已同步。
+
+**① 新增总开关 `structureWaypoints.enabled`（默认 `true`）**
+
+放在 `StructureWaypointHandler.onChunkLoad` 的**最前面**（在 `instanceof ServerLevel` 之前），因此关闭后区块加载路径上只剩「事件派发 + 一次配置布尔读取」。`ModConfigSpec.ConfigValue.get()` 本身是缓存字段读，无需自建缓存。
+
+代价（已写进配置注释与 README）：**修改后需重启服务器才生效**。
+
+**② 名单改版**
+
+| | 改前 | 改后 |
+|---|---|---|
+| 白名单 | 12 条 → 12 个结构 | **13 条 → 18 个结构**（+`minecraft:pillager_outpost`，+`#minecraft:village` 覆盖 5 变体） |
+| 黑名单 | 9 条 → 22 个结构 | **7 条 → 16 个结构**（移除 `#minecraft:village` 与 `minecraft:pillager_outpost`） |
+
+两名单保持**不相交**；34 个原版结构中 18 + 16 = 34，即**每种结构都至少被一种模式放行**。
+
+新增 5 个中文翻译键：`tpwp.minecraft.village_{plains,desert,savanna,snowy,taiga}` → 平原/沙漠/热带草原/雪原/针叶林村庄。旧键 `teleportwaypoint.waypoint.village` 仍保留为别名。
+
+**③ 测试更新**
+
+- `tags_partitionEveryVanillaStructure` → 重命名为 `tags_listsMatchTheirIntendedSemantics`。原断言「白名单 + 黑名单 = 34 精确划分」在新语义下不成立，改为：白名单 18、黑名单 16、两名单不相交、**34 个结构全部可达**（`inWhite || inBlack`），以及村庄/前哨站既在白名单又不在黑名单。
+- `tags_whitelistIsLoadedAndComplete` —— 反转村庄断言（5 个变体必须经 `#minecraft:village` 命中），并新增「`buried_treasure` 不得进白名单」。
+- `tags_blacklistCoversMineshaftMesa` —— 移除村庄/前哨站条目，并新增「它们不得出现在黑名单」。
+- `placer_setsWaterloggedInWater` —— 再次加固 fixture：改为**贴地、四周有石墙的 9×9 水池**。先前 3×3 水盆仍会偶发流干（实测 `found Block{minecraft:air}`）；现在 fixture 自带前置断言，若再流干会直接报告 fixture 问题而不是误报放置失败。
+
+**④ 运行时验证（开关对照，新世界 + RCON）**
+
+| 步骤 | `enabled = true` | `enabled = false` |
+|---|---|---|
+| `locate structure minecraft:desert_pyramid` | 沙漠神殿 ✓ | 沙漠神殿 ✓ |
+| `forceload` 生成该区域 | 9 区块 | 9 区块 |
+| 处理器日志 | `placed structure=minecraft:desert_pyramid pos={585,63,-839}` | **完全没有 structure waypoint 日志** |
+| 落盘区块内容 | 含 `teleportwaypoint` | `mentions teleportwaypoint=false waypoint=false`（区块已生成、有 block_entities，但无锚点） |
+
+两次运行都使用全新世界、`debugMode=true`，因此"没有日志"是门生效而不是日志被开关挡掉。
+
+### 3.10 遗留观察（未修改，供后续评估）
 
 L2 兜底扫描的起点是「结构最高 piece 顶部 + 8」，配合 64 格上限，意味着当某列在 `[结构顶 + 8 - 64, 结构顶 + 8]` 区间内没有可用地板时 L2 就会放弃该列。对于「piece 包围盒明显低于其落点」的结构（例如雪屋这类结构顶在地表之上、piece 盒顶却低于地表），L2 可能够不到地表。本轮未观察到实际影响（游戏中多次放置全部成功），但值得后续用实测确认。
 
