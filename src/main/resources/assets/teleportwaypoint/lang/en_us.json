@@ -74,7 +74,7 @@
   "teleportwaypoint.configuration.common.structureWaypoints": "Structure Waypoints",
   "teleportwaypoint.configuration.common.structureWaypoints.tooltip": "Controls which structures receive a waypoint automatically when their chunk is first generated.",
   "teleportwaypoint.configuration.common.structureWaypoints.enabled": "Enable Structure Waypoints",
-  "teleportwaypoint.configuration.common.structureWaypoints.enabled.tooltip": "Master switch for automatic waypoint placement in structures. When off, chunk loading does no structure waypoint work at all.§c Changing it requires a server restart!§r",
+  "teleportwaypoint.configuration.common.structureWaypoints.enabled.tooltip": "Master switch for automatic waypoint placement in structures. When off, chunk loading does no structure waypoint work at all.§c Changing it requires a game restart!§r",
   "teleportwaypoint.configuration.common.structureWaypoints.mode": "Structure List Mode",
   "teleportwaypoint.configuration.common.structureWaypoints.mode.tooltip": "WHITELIST places waypoints only in structures listed by the data pack tag teleportwaypoint:waypoint_whitelist. BLACKLIST places waypoints in every structure except those listed by teleportwaypoint:waypoint_blacklist. Both lists are data pack tags and can be extended by other data packs.",
   "teleportwaypoint.configuration.common.structureWaypoints.debugMode": "Debug Logging",
