@@ -351,7 +351,7 @@ Tier-1 文件内容 = 原版列表**逐字**复制 + 我们的处理器**追加�
 | 事件时区块可写？ | ✅ `setLoaded(true)`（`:210`）在事件前完成，`currentlyLoading` 全程持有 ⇒ `ServerChunkCache` 短路（`:154-155,191`） |
 | 结构数据可用？ | ✅ starts 与 references 均随 `LevelChunk` 构造复制（`:139-140`） |
 | 覆盖硬编码与模组结构？ | ✅ 数据源是 `StructureStart`（按注册表 ID 序列化），与「方块来自模板还是 Java 代码」无关 |
-| 能放 BE 与 NBT？ | ✅ 同区块内 `setBlock` → `LevelChunk.setBlockState:239-309` → 创建 BE + `addFreshBlockEntities` |
+| 能放 BE 与 NBT？ | ✅ **直接** `chunk.setBlockState:239-309` → 创建 BE + `addFreshBlockEntities`。**不要经 `Level#setBlock`**（见 §5.3.1） |
 
 ### 5.2 组件
 
@@ -359,7 +359,7 @@ Tier-1 文件内容 = 原版列表**逐字**复制 + 我们的处理器**追加�
 |---|---|
 | `structure/StructureWaypointHandler.java`（新） | `ChunkEvent.Load` 监听器，编排、try/catch、工作量预算 |
 | `structure/StructureWaypointScanner.java`（新） | 纯逻辑：给定 `LevelChunk` + `StructureStart`，产出**确定性排序**的候选 `BlockPos` 列表；不碰 level |
-| `structure/StructureWaypointPlacer.java`（新） | 施加单个候选：校验、`setBlock`、写 `waypoint_id` |
+| `structure/StructureWaypointPlacer.java`（新） | 施加单个候选：校验、`chunk.setBlockState`、写 `waypoint_id` |
 | `structure/StructureWaypointNaming.java`（新） | 结构注册表 ID → `waypoint_id` |
 | `structure/StructureWaypointDebug.java`（新，可选推荐） | `/teleportwaypoint debug structures`，把验证从考古变成一行命令 |
 | `config/CommonConfig.java`（改） | 新增 `structureWaypoints` 分组 |
@@ -382,7 +382,71 @@ Tier-1 文件内容 = 原版列表**逐字**复制 + 我们的处理器**追加�
 
 **禁止**
 
+0. **绝对禁止在事件里调用 `Level#setBlock` / `ServerLevel#setBlock`（任何标志位）。** 改用你手上那个 `LevelChunk` 直接写（见 §5.3.1）。这是本设计最贵的一条教训，2026-09-15 已实际导致服务器静默卡死。
 1. `level.getBlockState(BlockPos)` / `level.getFluidState(BlockPos)` / `getChunkAt` / `getChunk(x,z)` / `getChunkSource().getChunk(...)` / `managedBlock` —— 都会走到 `ServerChunkCache.getChunk:158-160` 的 `mainThreadProcessor.managedBlock(...)`，而补全由**主线程自己**的邮箱投递 ⇒ 自我阻塞（javadoc 警告的正是这个）。
+2. **任何 `StructureManager` 查询**：`startsForStructure`（`:50,64`）、`getStructureAt`（`:100`）、`getStructureWithPieceAt`（`:110-132`）、`getAllStructuresAt`（`:157`）、`fillStartsForStructure`（`:71`）—— 全部经 `level.getChunk(..., STRUCTURE_REFERENCES)`，且 `requireChunk=true`（`LevelReader.java:136-137`）⇒ 强制同步加载 + 永久 `TicketType.UNKNOWN` 票 + `runDistanceManagerUpdates()`。
+3. 别搞混 `ServerLevel.structureManager()`（`StructureManager`，`:329-331`）与 `ServerLevel.getStructureManager()`（`StructureTemplateManager`，`:1254-1256`）。本路线两者都不需要。
+4. 不要把 `Structure.afterPlace` 当替代品：`DesertPyramidStructure.java:34` 与 `WoodlandMansionStructure.java:44` **覆写它且不调 `super()`**，父类钩子会静默漏掉这两个结构。且它在**工作线程**上以 ProtoChunk 运行，BE 只能写 `DUMMY` 占位（`WorldGenRegion.java:294-301`）。
+5. 不要为了扩大覆盖去加载/生成区块。漏掉一个结构可以接受，卡死服务器不行。
+6. 不要写 `StructureStart`/`StructurePiece`/区块的结构映射。写 `structureStarts` 会置 `unsaved`（`ChunkAccess.java:211/221`）并使区块与其持久化结构数据不同步。
+
+### 5.3.1 【2026-09-15 新增】为什么 `Level#setBlock` 是禁区：它有两条独立的跨区块派生路径
+
+**事故：** 0.4.0 用 `level.setBlock(pos, state, flags)` 放锚点，服务器静默卡死（无异常、无日志、无 crash-report，watchdog 一起冻住）。提交 `6c97b5e` 把 `UPDATE_ALL` 改成 `UPDATE_CLIENTS` 后**依然卡死**。
+
+**原因：`Level#setBlock` 会派生邻居通知，而邻居通知既读又写相邻区块。这样的路径有两条，由不同的标志位把守：**
+
+| 路径 | 门槛 | `UPDATE_ALL`(3) | `UPDATE_CLIENTS`(2) | 抑制方法 |
+|---|---|---|---|---|
+| **A** 红石：`blockUpdated` → `updateNeighborsAt` → `MultiNeighborUpdate.runNext` → `getBlockState(邻居)` | `flags & 1` | 跑 | 跳过 | 去掉 `UPDATE_NEIGHBORS` |
+| **B** 形状级联：`updateNeighbourShapes` → `neighborShapeChanged` → `CollectingNeighborUpdater.shapeUpdate` → `NeighborUpdater.executeShapeUpdate` → `getBlockState(邻居)` | **`(flags & 16) == 0`** | **跑** | **照跑** | 只有第 **16** 位（`UPDATE_KNOWN_SHAPE`）能抑制 |
+
+`Block.java:77-86`：`UPDATE_NEIGHBORS=1`、`UPDATE_CLIENTS=2`、`UPDATE_KNOWN_SHAPE=16`、`UPDATE_ALL=3`。**两个值都不含第 16 位**，且 `Level.java:294` 的 `flags & -34` 会把第 1 位与第 32 位一并清掉 ⇒ 在路径 B 上 **`UPDATE_ALL` 与 `UPDATE_CLIENTS` 行为完全相同**。这就是「改标志位无效」的确切原因。
+
+完整链条（均已在源码中核实）：
+
+```
+Level.markAndNotifyBlock:293  if ((flags & 16) == 0 && recursionLeft > 0)
+Level.markAndNotifyBlock:296      state.updateNeighbourShapes(this, pos, flags & -34, recursionLeft - 1)
+BlockBehaviour:781-788            for (6 个方向) level.neighborShapeChanged(...)
+Level.neighborShapeChanged:378-380  → CollectingNeighborUpdater.shapeUpdate:29-33
+CollectingNeighborUpdater:137-144   → NeighborUpdater.executeShapeUpdate
+NeighborUpdater:36                BlockState bs = level.getBlockState(邻居)      // 接收者是 ServerLevel
+Level.getBlockState:405-413         → getChunk(x, z, ChunkStatus.FULL)          // requireChunk = true
+ServerChunkCache.getChunk:158-159     this.mainThreadProcessor.managedBlock(f::isDone);   // ★ 永久阻塞
+```
+
+**另外两条同级路径（同属 `Level` 级写入派生）：**
+
+- **形状级联会跨边界「写」**：`NeighborUpdater:37-38` → `Block.updateOrDestroy` → `level.setBlock(邻居坐标, ...)`。锚点是完整碰撞体（`ModBlocks.java:16-22` 设了 `noOcclusion()` 但**没有** `noCollission()`），旁边的栅栏/墙/铁栏杆/玻璃板会来连接它 ⇒ 在村庄、林地府邸、海底神殿里都很现实。
+- **旧方块的 `onRemove` 会触发邻居更新**：`LevelChunk.setBlockState:274` → `BlockBehaviour#onRemove:193-197` → `Level.removeBlockEntity:822-827` 结尾调用 `updateNeighbourForOutputSignal` → `MultiNeighborUpdate.runNext:123 getBlockState(邻居)`。
+
+**触发条件（两条同时成立）：** ① 落点在某条区块边界列（`x&15` 或 `z&15` 为 0/15）；② 界外邻居当时未达 FULL。`currentlyLoading` 短路（`ServerChunkCache.java:153-155`）**只管事件自己那个区块**，覆盖不到派生出的相邻坐标。
+
+**注意扫描器会加剧这一点：** L1 的第一排序键是「到 piece 中心的距离」，当 piece 中心落在隔壁区块时，围盒被夹回本区块后**最近的列恰好就是边界列** —— 即代码倾向于优先探测最容易触发的列。
+
+**正确做法：**
+
+```java
+// 推荐：绕开 Level，直接写已持有的 LevelChunk
+//   引擎自己的世界生成路径就是这么做的：WorldGenRegion.java:275-284 用 chunk.setBlockState(pos, state, false)
+BlockState previous = chunk.setBlockState(pos, state, false);
+if (previous == null) return false;
+// 客户端同步无需手动处理：区块包在 FULL 完成之后才构建（ChunkMap → onChunkReadyToSend），
+// 且 sendBlockUpdated 本身受 getFullStatus().isOrAfter(BLOCK_TICKING) 门控，事件时刻通常为假。
+
+// 退而求其次（仍可接受，但只堵住路径 B，不堵住上面两条次要路径）：
+level.setBlock(pos, state, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);   // 18 = 2 | 16
+// 切勿使用 UPDATE_ALL_IMMEDIATE(11)：含第 1 位、不含第 16 位
+```
+
+**推广规则：** 凡是在「区块生成／加载回调」里改世界，都不要经 `Level`/`ServerLevel` 的写入 API。用你手上那个 `LevelChunk` 直接 `setBlockState`，把「绝不跨区块」从**纪律**变成**结构上不可能**。
+
+**顺带排除的三个假设（省得后人重查）：**
+
+- **光照引擎不会死锁**：`LevelChunk.setBlockState:260,268` → `ThreadedLevelLightEngine.addTask` 只是往邮箱投递；引擎内唯一的区块查询 `LightEngine.getChunk` → `ServerChunkCache.getChunkForLighting:267-271` 是纯 map 查找。
+- **扫描器在结构上不可能跨区块**：`LevelChunk.getBlockState:178-211` 用 `x & 15` / `z & 15` 取址，越界只会**别名到本区块另一列**；`y` 越界直接返回 AIR。`ChunkAccess` 只持有 `levelHeightAccessor`，根本没有 `Level`。
+- **`isFaceSturdy(chunk, ...)` 对原版方块取缓存路径**，不触碰传入的 BlockGetter（只有脚手架/竹子/潜影盒等 `dynamicShape()` 方块才走实时形状）；且传入的 BlockGetter 就是我们给的 `LevelChunk`。
 2. **任何 `StructureManager` 查询**：`startsForStructure`（`:50,64`）、`getStructureAt`（`:100`）、`getStructureWithPieceAt`（`:110-132`）、`getAllStructuresAt`（`:157`）、`fillStartsForStructure`（`:71`）—— 全部经 `level.getChunk(..., STRUCTURE_REFERENCES)`，且 `requireChunk=true`（`LevelReader.java:136-137`）⇒ 强制同步加载 + 永久 `TicketType.UNKNOWN` 票 + `runDistanceManagerUpdates()`。
 3. 别搞混 `ServerLevel.structureManager()`（`StructureManager`，`:329-331`）与 `ServerLevel.getStructureManager()`（`StructureTemplateManager`，`:1254-1256`）。本路线两者都不需要。
 4. 不要把 `Structure.afterPlace` 当替代品：`DesertPyramidStructure.java:34` 与 `WoodlandMansionStructure.java:44` **覆写它且不调 `super()`**，父类钩子会静默漏掉这两个结构。且它在**工作线程**上以 ProtoChunk 运行，BE 只能写 `DUMMY` 占位（`WorldGenRegion.java:294-301`）。
@@ -493,7 +557,7 @@ String modKey     = "teleportwaypoint.waypoint." + waypointId(structureId);
       ├─ 邻近锚点标记检查（只读本区块）
       ├─ StructureWaypointScanner：纯几何 + LevelChunk.getBlockState
       └─ StructureWaypointPlacer：
-            level.setBlock(pos, waypoint, UPDATE_ALL)   → LevelChunk.setBlockState:239
+            chunk.setBlockState(pos, waypoint, false)   → 不经 Level，无邻居派生（§5.3.1）
                                                         → newBlockEntity + addAndRegisterBlockEntity
             be.setId(waypointId)（校验后再调）
  8. currentlyLoading = null  :217
@@ -745,7 +809,7 @@ gradlew.bat runServer --offline --console=plain
 | # | 风险 | 证据 | 对策 |
 |---|---|---|---|
 | R1 | 性能：监听器对每次区块加载触发（含磁盘加载、含客户端） | `ChunkStatusTasks.java:215`、`ClientChunkCache.java:127`、`MinecraftServer.java:867` | §7.4 的早退顺序；第三道门（双空）承担绝大部分削减；默认关闭逐次日志 |
-| R2 | 死锁/卡顿：主线程阻塞在 `managedBlock`；跨区块访问触发强制同步加载与**重入** `ChunkEvent.Load` | `ServerChunkCache.java:158-160,227-248`；`BlockableEventLoop.java:130-142`；`ChunkEvent.java:47` | §5.3 的禁止清单；扫描器参数收窄为 `LevelChunk`；放置严格限制在事件区块内 |
+| R2 | 死锁/卡顿：主线程阻塞在 `managedBlock`。**2026-09-15 已实际发生** —— 来源不是直接调用，而是 `Level#setBlock` 派生的邻居通知（两条路径，见 §5.3.1） | `ServerChunkCache.java:158-160`；`Level.java:293-298`；`NeighborUpdater.java:36`；`ChunkEvent.java:47` | §5.3 禁止清单（新增第 0 条）；**放置一律用 `chunk.setBlockState`，禁止 `Level#setBlock`** |
 | R3 | 覆盖回退：甲够不着 `end_city`/`igloo`/`woodland_mansion` | `TemplateStructurePiece.java:88-90`；只有池元素持处理器列表（`SinglePoolElement.java:60-62`） | D11；以路线乙接管这三族 |
 | R4 | 重复锚点：与旧数据包并存，且数据模型无结构实例标识 | `MinecraftServer.java:1581`；`WaypointRecord.java:13` | §9.4：同版本改默认值 + 放置前邻近标记检查 + README 迁移说明 |
 | R5 | 数据包失败模式从**静默**变为**硬失败** | `RegistryDataLoader.java:152-154` vs `StructureTemplateManager.java:102-114` | D10；Tier-2 包声明模组依赖；README 说明恢复途径（安全模式/移除包） |

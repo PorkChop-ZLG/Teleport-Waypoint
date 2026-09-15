@@ -116,14 +116,74 @@ public final class StructureWaypointGameTests {
         helper.succeed();
     }
 
+    /**
+     * Pins the regression that made every pre-0.4.0 waypoint show "Unnamed Waypoint": {@code key()}
+     * used to prepend the structured prefix unconditionally, so a legacy bare id such as
+     * {@code end_city} produced {@code tpwp.end_city}, which exists in no language file.
+     */
+    @GameTest(template = TEMPLATE, templateNamespace = TeleportWaypoint.MODID)
+    public void naming_legacyIdsStillNameThemselves(GameTestHelper helper) {
+        String[] legacyIds = {
+            "ancient_city", "bastion_remnant", "desert_pyramid", "end_city", "igloo", "jungle_temple",
+            "nether_fortress", "ocean_monument", "stronghold", "swamp_hut", "trial_chambers",
+            "woodland_mansion", "village"
+        };
+        for (String id : legacyIds) {
+            String modern = Naming.modernKey(id);
+            String legacy = Naming.legacyKey(id);
+            helper.assertTrue(("tpwp." + id).equals(modern), "modern key wrong for " + id + ": " + modern);
+            helper.assertTrue(("teleportwaypoint.waypoint." + id).equals(legacy),
+                    "legacy key wrong for " + id + ": " + legacy);
+            // The legacy key must stay reachable: a bare id resolves to it whenever the language has no
+            // structured entry, which is always true for these ids.
+            helper.assertTrue(legacy.equals(Naming.key(id)) || modern.equals(Naming.key(id)),
+                    "key() left both key spaces for " + id + ": " + Naming.key(id));
+        }
+
+        // The regression test proper: the display name of a legacy id must not degrade to the unnamed
+        // fallback, and its humanized fallback must be the id itself, not the empty marker.
+        for (String id : new String[] {"end_city", "jungle_temple", "nether_fortress", "ocean_monument",
+                                       "woodland_mansion", "ancient_city"}) {
+            String fallback = fallbackOf(Naming.displayName(id));
+            helper.assertTrue(fallback != null, "displayName(" + id + ") has no fallback text at all");
+            helper.assertTrue(!Naming.EMPTY_FALLBACK_NAME.equals(fallback),
+                    "displayName(" + id + ") degraded to the unnamed fallback; legacy name is broken again");
+            helper.assertTrue(Naming.humanize(id).equals(fallback),
+                    "displayName(" + id + ") fallback should be the humanized id, got: " + fallback);
+        }
+        helper.succeed();
+    }
+
+    /** Extracts the fallback text of a translatable component, or null when it has none. */
+    private static String fallbackOf(net.minecraft.network.chat.Component component) {
+        if (component.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents contents) {
+            return contents.getFallback();
+        }
+        return null;
+    }
+
     @GameTest(template = TEMPLATE, templateNamespace = TeleportWaypoint.MODID)
     public void naming_keys(GameTestHelper helper) {
-        helper.assertTrue("tpwp.minecraft.end_city".equals(Naming.key("minecraft.end_city")),
-                "unexpected key: " + Naming.key("minecraft.end_city"));
+        // modernKey/legacyKey never consult the language table, so they are stable everywhere.
+        helper.assertTrue("tpwp.minecraft.end_city".equals(Naming.modernKey("minecraft.end_city")),
+                "unexpected modern key: " + Naming.modernKey("minecraft.end_city"));
+        // A legacy save stores a BARE id, so this is the pair that matters for backward compatibility.
+        helper.assertTrue("teleportwaypoint.waypoint.end_city".equals(Naming.legacyKey("end_city")),
+                "a legacy bare id must resolve to the legacy key: " + Naming.legacyKey("end_city"));
         helper.assertTrue("tpwp.empty".equals(Naming.emptyKey()), "unexpected empty key: " + Naming.emptyKey());
+
+        // key() prefers the structured key and falls back to the legacy key when the language lacks it.
+        // GameTest runs without language files, so the fallback branch is the one exercised here; the
+        // modern branch is covered by the naming_displayName* tests below.
+        String resolved = Naming.key("minecraft.end_city");
+        helper.assertTrue("tpwp.minecraft.end_city".equals(resolved)
+                        || "teleportwaypoint.waypoint.minecraft.end_city".equals(resolved),
+                "key() must resolve to one of the two known key spaces, got: " + resolved);
+
         for (String bad : new String[] {null, "", "BAD ID", "Uppercase", "a..b", ".a", "a."}) {
-            helper.assertTrue(Naming.emptyKey().equals(Naming.key(bad)),
-                    "id '" + bad + "' should fall back to the empty key, got: " + Naming.key(bad));
+            String key = Naming.key(bad);
+            helper.assertTrue(Naming.emptyKey().equals(key) || Naming.legacyKey(Naming.EMPTY_ID).equals(key),
+                    "id '" + bad + "' should fall back to an empty key, got: " + key);
         }
         helper.assertTrue(Naming.MAX_ID_LENGTH == WaypointBlockEntity.MAX_TEXT_LENGTH,
                 "Naming.MAX_ID_LENGTH must track WaypointBlockEntity.MAX_TEXT_LENGTH");

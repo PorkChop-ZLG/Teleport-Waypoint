@@ -42,6 +42,7 @@
 | D8 | **层内两遍：先要"有顶"，再退化** | 规则 C，N = 8；屋顶判据是偏好不是硬约束 |
 | D9 | **piece 按体积降序逐个试，成功即停** | 锚点列仅作排序权重，不作硬约束 |
 | D10 | **锚点显示名键前缀改为 `tpwp.`** | `tpwp.minecraft.end_city`；仅锚点显示名用该前缀，其余键不变 |
+| D11 | **放置一律用 `chunk.setBlockState`，禁止 `Level#setBlock`** | 2026-09-15 事故教训：`Level#setBlock` 会派生邻居通知，其中**形状级联**（门槛是第 16 位而非第 1 位）在任何标志位下都会跨区块读写 ⇒ 主线程自死锁。详见总体文档 §5.3.1 |
 
 ---
 
@@ -369,11 +370,11 @@
 | 序号 | 判定 | 说明 |
 |---|---|---|
 | 1 | `p.y` 在 `[minBuildHeight+1, maxBuildHeight-1]` | 越界直接淘汰 |
-| 2 | `down = getBlockState(p.below())` 满足：非空气、非流体、`down.isFaceSturdy(level, p.below(), UP)` | 必须有地板 |
+| 2 | `down = chunk.getBlockState(p.below())` 满足：非空气、非流体、`down.isFaceSturdy(chunk, p.below(), UP)` | 必须有地板 |
 | 3 | `down` 无 BlockEntity（先判 `down.hasBlockEntity()`） | 不把锚点架在箱子上 |
-| 4 | `at = getBlockState(p)` 满足 `at.isAir() || at.canBeReplaced()` | 可放置 |
+| 4 | `at = chunk.getBlockState(p)` 满足 `at.isAir() || at.canBeReplaced()` | 可放置 |
 | 5 | `at` 无 BlockEntity | 不覆盖箱子／刷怪笼／vault 等 |
-| 6 | `p.above(1)` 与 `p.above(2)` 均满足 `isAir() || canBeReplaced()`，且均无 BlockEntity | 对应 ≈1.15 格的视觉净空 |
+| 6 | `chunk.getBlockState(p.above(1))` 与 `p.above(2)` 均满足 `isAir() || canBeReplaced()`，且均无 BlockEntity | 对应 ≈1.15 格的视觉净空 |
 | 7 | **液体**：`p`、`above(1)`、`above(2)` 三格的流体**只能是水或空**；**任何一格是岩浆即淘汰**。`at` 为水时放置器须置 `WATERLOGGED=true` | 见 §6.2 与 §6.3 |
 
 > 判定的调用顺序按上表序号执行，让最便宜的检查最先短路。第 3/5 步必须先判 `hasBlockEntity()` 再取 BlockEntity，避免 `getBlockEntity` 触发 pending BE 的惰性反序列化。
@@ -392,9 +393,9 @@
 ```
 roofed(p):
     for k in 1..N:                       // N = 8
-        b = getBlockState(p.above(k))
+        b = chunk.getBlockState(p.above(k))
         if b.isAir() or b 的流体非空: continue   // 空气/流体不构成顶，继续向上找
-        return b.isFaceSturdy(level, p.above(k), DOWN)   // 第一个非空气块就是顶
+        return b.isFaceSturdy(chunk, p.above(k), DOWN)   // 第一个非空气块就是顶
     return false                          // N 格内没找到任何非空气块
 ```
 
@@ -499,20 +500,22 @@ isValidPlacement(level, p):
 
 roofed(level, p, n):
     for k in 1..n:
-        b = level.getBlockState(p.above(k))
+        b = chunk.getBlockState(p.above(k))
         if b.isAir() or !b.getFluidState().isEmpty(): continue
-        return b.isFaceSturdy(level, p.above(k), DOWN)
+        return b.isFaceSturdy(chunk, p.above(k), DOWN)
     return false
 
-place(level, p):
+place(chunk, p):                                   // 注意：本函数只接收 LevelChunk，不接收 Level
     state = WAYPOINT.defaultBlockState()
-    if level.getFluidState(p).getType() == Fluids.WATER:
+    if chunk.getBlockState(p).getFluidState().getType() == Fluids.WATER:
         state = state.setValue(WATERLOGGED, true)    // 否则水中会形成空腔
-    level.setBlock(p, state, UPDATE_ALL)
-    // BE 的 waypoint_id 由 StructureBlockInfo 的 NBT 或 setBlock 后显式设置
+    chunk.setBlockState(p, state, false)             // 不经 Level ⇒ 不派生邻居通知（见下）
+    // BE 的 waypoint_id 在 chunk.getBlockEntity(p) 上显式设置
 ```
 
-> 所有 `getBlockState` 的接收者都是**事件区块自身**（`LevelChunk`），绝不跨区块 —— 见 §3 的禁止清单。
+> 所有方块读写的接收者都是**事件区块自身**（`LevelChunk`），绝不跨区块 —— 见 §3 的禁止清单。
+>
+> **`place` 不是 `level.setBlock`：** 2026-09-15 的事故证明 `Level#setBlock` 会派生邻居通知，而其中**形状级联**（门槛是 `flags & 16` 而非 `flags & 1`）在任何标志位下都会同步读写相邻区块 ⇒ 主线程自死锁。`LevelChunk#setBlockState` 自己做区块写入、高度图、光照排队与方块实体注册，但**不做任何邻居通知**。完整分析见总体文档 §5.3.1。
 
 #### 6.6.6 探测预算
 

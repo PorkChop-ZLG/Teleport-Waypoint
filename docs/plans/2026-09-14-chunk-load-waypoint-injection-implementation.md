@@ -61,7 +61,7 @@
 | E1 | `ChunkEvent.Load` 的 post 点被 **`currentlyLoading` 的 try/finally 包住**（signal 行本身在 try 块内），因此事件期间 `chunkHolder.currentlyLoading == 本区块` | `ChunkStatusTasks.java:211-218` |
 | E2 | `ServerChunkCache.getChunk` 的第一道短路是 `chunkholder.currentlyLoading != null → return`，**位于 `managedBlock` 之前** | `ServerChunkCache.java:153-159` |
 | E3 | 由 E1+E2：事件期间对本区块调 `level.setBlock(...)`（内部 → `getChunkAt` → `getChunk`）**会短路返回，不阻塞**。所以「禁止跨区块访问」是**只针对其他区块**的纪律，本区块放置是安全的 | E1+E2 |
-| **E3a** | **⚠ E3 只覆盖 `setBlock` 的第一次区块查找，不足以保证放置安全。** `UPDATE_ALL` 含 `UPDATE_NEIGHBORS` ⇒ `CollectingNeighborUpdater.MultiNeighborUpdate.runNext:123` 会同步 `level.getBlockState(邻居)`；边界列的邻居落在相邻区块，而相邻区块在 FULL 阶段**只保证到 `INITIALIZE_LIGHT`**（`ChunkPyramid` 的 `FULL` 步骤自身无 requirement，继承 `LIGHT` 的 `addRequirement(INITIALIZE_LIGHT, 1)`）⇒ 走到 `ServerChunkCache.getChunk:159` 的 `managedBlock`，等待主线程自己的邮箱 ⇒ **自死锁**。**结论：处理器内写方块必须用 `Block.UPDATE_CLIENTS`，不得用 `UPDATE_ALL`** | `Level.java:287`、`CollectingNeighborUpdater.java:122-123`、`Level.java:406-411`、`ServerChunkCache.java:153-159`、`ChunkPyramid.java:43-45` |
+| **E3a** | **⚠ E3 只覆盖 `setBlock` 的第一次区块查找，不足以保证放置安全。** `Level#setBlock` 会派生**两条独立**的邻居通知路径，它们由不同标志位把守：**路径 A**（`flags & 1`）`blockUpdated` → `MultiNeighborUpdate.runNext:123` → `level.getBlockState(邻居)`；**路径 B**（`(flags & 16) == 0`）`updateNeighbourShapes` → `CollectingNeighborUpdater.shapeUpdate` → `NeighborUpdater.executeShapeUpdate:36` → `level.getBlockState(邻居)`。`Block.java:77-86`：`UPDATE_NEIGHBORS=1`、`UPDATE_CLIENTS=2`、`UPDATE_KNOWN_SHAPE=16`、`UPDATE_ALL=3` —— **两个常用值都不含第 16 位**，且 `Level.java:294` 的 `flags & -34` 会清掉第 1、32 位，故在路径 B 上二者**行为完全相同**。边界列的邻居落在相邻区块，而相邻区块在 FULL 阶段**只保证到 `INITIALIZE_LIGHT`**（`ChunkPyramid` 的 `FULL` 步骤自身无 requirement，继承 `LIGHT` 的 `addRequirement(INITIALIZE_LIGHT, 1)`）⇒ 走到 `ServerChunkCache.getChunk:158-159` 的 `managedBlock`，等待主线程自己的邮箱 ⇒ **自死锁**（2026-09-15 已实际发生）。**结论：处理器内一律不得用 `Level#setBlock`，改用 `chunk.setBlockState(pos, state, false)`（见 A2）** | `Level.java:287`、`Level.java:293-298`、`CollectingNeighborUpdater.java:122-123`、`NeighborUpdater.java:36`、`Level.java:406-411`、`ServerChunkCache.java:153-159`、`ChunkPyramid.java:43-45` |
 | E4 | 但**其他**区块若未加载，`managedBlock` 会等主线程自己的邮箱 ⇒ 死锁。**跨区块访问仍然是硬禁止** | `ServerChunkCache.java:158-160` |
 | E5 | `LevelChunk.setBlockState` 在成功路径上**已经置 `unsaved = true`**（`:304`） | `LevelChunk.java:304` |
 | E6 | `Level.blockEntityChanged` 的实现是 `if (hasChunkAt(pos)) getChunkAt(pos).setUnsaved(true)` —— 与 E5 等效 | `Level.java:984-988` |
@@ -173,14 +173,14 @@ NeoForge.EVENT_BUS
 | F3 | **全部** `StructureManager` 查询：`startsForStructure`、`getStructureAt`、`getStructureWithPieceAt`、`getAllStructuresAt`、`fillStartsForStructure` | 全部经 `level.getChunk(..., STRUCTURE_REFERENCES)` 且 `requireChunk=true` ⇒ 强制同步加载 + 永久 `TicketType.UNKNOWN` 票 |
 | F4 | 写 `StructureStart` / `StructurePiece` / 区块的结构映射 | 会置 `unsaved` 并使区块与其持久化结构数据不同步 |
 | F5 | 遍历 piece 包围盒范围内的**其他**区块 | 落点必须在本区块内（约束 S4） |
-| **F6** | **`level.setBlock(pos, state, Block.UPDATE_ALL)`（或任何含 `UPDATE_NEIGHBORS` 的标志）** | **间接**跨区块访问：`UPDATE_NEIGHBORS` → `blockUpdated` → `CollectingNeighborUpdater.MultiNeighborUpdate.runNext:123` 同步 `level.getBlockState(邻居)`，边界列的邻居在相邻区块，而相邻区块在 FULL 阶段只保证到 `INITIALIZE_LIGHT` ⇒ `managedBlock` **自死锁**。用 `Block.UPDATE_CLIENTS`（见 E3a） |
+| **F6** | **`level.setBlock(...)` / `serverLevel.setBlock(...)` —— 一律禁止，与标志位无关。** 另附：`Block.UPDATE_ALL`、`Block.UPDATE_CLIENTS` 也不能用 | **间接**跨区块访问：`Level#setBlock` 派生两条邻居通知路径（A 由 `flags & 1` 把守，B 由 `(flags & 16) == 0` 把守）。**路径 B 在任何标志位下都会跑**（`UPDATE_ALL`=3 与 `UPDATE_CLIENTS`=2 都不含第 16 位），同步 `level.getBlockState(邻居)`，边界列的邻居在相邻区块、且 FULL 阶段只保证到 `INITIALIZE_LIGHT` ⇒ `managedBlock` **自死锁**。正确做法是 `chunk.setBlockState(pos, state, false)`（见 A2 与设计文档 §5.3.1） |
 
 **允许且必须使用：**
 
 | 编号 | 允许项 | 理由 |
 |---|---|---|
 | A1 | `LevelChunk.getBlockState(pos)`（事件区块自身） | 纯数组读，无区块查找 |
-| A2 | `level.setBlock(pos, state, Block.UPDATE_CLIENTS)`，`pos` 在事件区块内。**必须去掉 `UPDATE_NEIGHBORS`** —— `UPDATE_ALL` 会经邻居更新级联去读相邻区块并自死锁（E3a） | E1+E2+E3a |
+| A2 | **`chunk.setBlockState(pos, state, false)`**（`chunk` = 事件交付的 `LevelChunk`，`pos` 在本区块内）。**不得改用 `Level#setBlock`**。返回 `null` ⇒ 状态未变，按失败处理。可选：`level.getChunkSource().blockChanged(pos)` 做显式客户端同步（`ServerChunkCache.java:426-433`，纯 map 查找，不阻塞） | E1+E2+E3a；设计文档 §5.3.1 |
 | A3 | `chunk.getBlockEntity(pos)`，`pos` 是本帧刚放置的位置 | E10：此时 `pendingBlockEntities` 里绝无该 pos 的条目（该 pos 放置前已确认非 BE） |
 
 ### 2.3 其余强制纪律
@@ -740,7 +740,7 @@ if (fluid.getType() == Fluids.WATER) {
 ```
    - **读 `chunk.getBlockState` 而不是 `level.getFluidState`**（F1）。
    - 岩浆不可能到这一步（T11 第 6 条已排除），但仍**不要**给 `WATERLOGGED` 一个「否则」分支去放岩浆 —— 只认 `WATER`，其余一律 `false`。
-3. `level.setBlock(pos, state, Block.UPDATE_CLIENTS)`。返回 false ⇒ 放弃。**不要用 `UPDATE_ALL`**：`UPDATE_NEIGHBORS` 引发的邻居更新级联会 `level.getBlockState(相邻区块)`，而相邻区块在 FULL 阶段只保证到 `INITIALIZE_LIGHT`，会自死锁（E3a）。`UPDATE_CLIENTS` = 2，仍会向客户端同步方块与光照。
+3. `chunk.setBlockState(pos, state, false)`。返回 `null` ⇒ 放弃。**不得经 `Level#setBlock`**：它会派生邻居通知，其中**形状级联**（门槛是 `flags & 16`，不是 `flags & 1`）在 `UPDATE_ALL` 与 `UPDATE_CLIENTS` 下**都会**同步 `level.getBlockState(相邻区块)`，而相邻区块在 FULL 阶段只保证到 `INITIALIZE_LIGHT` ⇒ 自死锁（E3a）。`LevelChunk#setBlockState` 自己做区块写入、高度图、光照排队与 BE 注册，但不做任何邻居通知；客户端同步由区块包路径负责。
 4. **写 `waypoint_id`**：
 ```java
 if (chunk.getBlockEntity(pos) instanceof WaypointBlockEntity be) {
@@ -1022,8 +1022,8 @@ gradlew.bat runGameTestServer --offline --console=plain
 | 12 | `rg "start\.getBoundingBox\(\)" src/main/java/com/zonlong/teleportwaypoint/structure/` | **0 行**（E17/E18：会把锚点列与搜索盒偏移 12 格） |
 | 13 | `rg "getOrCreateTag" src/main/java/com/zonlong/teleportwaypoint/` | **0 行**（R15） |
 | 14 | `rg -n "\.above\(1\)\|\.above\(2\)\|p\.above\(k\)" src/main/java/com/zonlong/teleportwaypoint/structure/` | 每处上方都有 `maxBuildHeight` 边界保护（R8/R16） |
-| **15** | `rg "level\.setBlock" src/main/java/com/zonlong/teleportwaypoint/structure/` | 恰好 1 行，且**唯一标志是 `Block.UPDATE_CLIENTS`**（F6/E3a） |
-| **16** | `rg "UPDATE_NEIGHBORS\|UPDATE_ALL\|UPDATE_KNOWN_SHAPE\|UPDATE_SUPPRESS_DROPS\|UPDATE_MOVE_BY_PISTON" src/main/java/com/zonlong/teleportwaypoint/structure/`，再排除掉 `StructureWaypointPlacer` 里那段**解释性注释** | **0 行命中代码**（注释必须提到 `UPDATE_ALL` 以警示，故按「非注释行」判定） |
+| **15** | `rg "level\.setBlock|serverLevel\.setBlock" src/main/java/com/zonlong/teleportwaypoint/structure/` | **0 行命中代码**（注释不算）。放置必须走 `chunk.setBlockState`（F6/E3a/A2） |
+| **16** | `rg "Block\.UPDATE_|BlockState\b.*flag" src/main/java/com/zonlong/teleportwaypoint/structure/`，再排除注释 | **0 行命中代码**。注意：单看「是否出现 `UPDATE_ALL`」是**无效**检查 —— 曾经的失败修复正是靠这条通过的（`UPDATE_CLIENTS` 同样触发形状级联）。真正的检查是第 15 条 |
 
 **验证：** 上表 10 条全部符合。任一条不符即回到对应任务修。
 
@@ -1074,7 +1074,7 @@ gradlew.bat runGameTestServer --offline --console=plain
 | 12 | Xaero 小地图 / 世界地图 | 显示新锚点，名字与新键一致；按维度隔离 |
 | 13 | `debugMode=false` 重启 | 日志中**无**任何 `structure waypoint:` 行 |
 | 14 | 专用服务器 + 原版客户端 | 聊天消息**不显示裸键** |
-| 15 | **负面信号检查** | 日志中**不得**出现 `"Chunk not there when requested"`、watchdog "A single server tick took…"、任何指向 worldgen 的 `CrashReport`。死锁表现为主线程停在 `ServerChunkCache.getChunk → managedBlock` |
+| 15 | **负面信号检查（2026-09-15 更正）** | 日志中**不得**出现 `"Chunk not there when requested"`、watchdog "A single server tick took…"、任何指向 worldgen 的 `CrashReport`；**但这三样对本次死锁一个都不会产生**（前三者都需要主线程推进），因此它们**不能**用来判定“没有死锁”。可靠的替代信号是：**心跳**（服务端 tick 计数 / `spark` 世界统计是否持续推进），以及**不受 `debugMode` 门控的两个 WARN**：`structure waypoint: re-entrant chunk load detected` 与 `structure waypoint: handler failed`，两者 0 命中才说明模组未重入、未抛异常 |
 
 **M1–M4 实测（§3.2）：** 在第 1 步期间挂 spark profiler，按 §3.2 的四项采样并记录数值。
 
@@ -1157,7 +1157,7 @@ T7 ─────────────────────────�
 | R14 | 误用 `start.getBoundingBox()` 当锚点列或 L1 搜索盒 ⇒ 偏 12 格且被记忆化，测试难以发现 | **中** | 中 | E16–E18 已核实并写入 T10 的显式「不要写」清单；T16 的 `scanner_l1_highestRoofedColumn` 用不含 terrainAdaptation 的匿名 piece，能暴露偏差 |
 | R15 | 用 `structures.getOrCreateTag(...)` 判标签存在性 ⇒ 把「缺失」永久伪装成「为空」⇒ WARN 永不出现 | 中 | 低 | T13 显式列为「必须避免的坑」 |
 | R16 | `p.above(k)` 越界（除 R8 的高度上界外，还有 `roofed` 里的同类问题） | 中 | 中 | T11 的 `roofed` 循环首行就加 `p.getY() + k >= maxBuildHeight → return false` |
-| **R17** | **放置用 `UPDATE_ALL` ⇒ 邻居更新级联读相邻区块 ⇒ 主线程自死锁（已实际发生）** | **高** | **致命** | 改用 `Block.UPDATE_CLIENTS`（F6/E3a）；T17 第 15/16 条 find-all 长期钉住。**表现：服务器冻结、无崩溃、无日志、watchdog 也不报**——因为它本身就卡在 `managedBlock` 里 |
+| **R17** | **放置用 `Level#setBlock` ⇒ 派生的邻居通知（形状级联，门槛为第 16 位）读写相邻区块 ⇒ 主线程自死锁（已实际发生两次）** | **高** | **致命** | 改用 `chunk.setBlockState`（F6/E3a/A2）；T17 第 15 条 find-all 长期钉住。**表现：服务器冻结、无崩溃、无日志、watchdog 也不报**——因为它本身就卡在 `managedBlock` 里 |
 
 ---
 

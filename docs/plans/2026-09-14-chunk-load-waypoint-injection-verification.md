@@ -21,19 +21,22 @@ gradlew.bat clean build --offline --console=plain
 
 ```
 gradlew.bat runGameTestServer --offline --console=plain
-→ All 20 required tests passed :)
+→ All 21 required tests passed :)
 ```
 
-连续多次运行均通过（用于排除偶发）。覆盖的 20 个测试：
+连续多次运行均通过（用于排除偶发）。覆盖的 21 个测试：
 
 | 分组 | 测试 |
 |---|---|
-| 命名（6） | `naming_vanillaIds`、`naming_modStructures`、`naming_truncation`、`naming_humanize`、`naming_keys`、`displayName_notEmptyFallback` |
+| 命名（7） | `naming_vanillaIds`、`naming_modStructures`、`naming_truncation`、`naming_humanize`、`naming_keys`、`naming_legacyIdsStillNameThemselves`、`displayName_notEmptyFallback` |
 | id 合法性（1） | `idPattern_acceptsDot` |
 | 扫描几何（5） | `scanner_picksHighestRoofedSpot`、`scanner_fallsBackToUnroofedPass`、`scanner_chunkFallbackStaysInChunk`、`scanner_invalidStartIsIgnored`、`scanner_excludesBlockEntities` |
 | 水体放置（1） | `scanner_allowsWater` |
 | 标签（4） | `tags_whitelistIsLoadedAndComplete`、`tags_blacklistCoversMineshaftMesa`、`tags_partitionEveryVanillaStructure`、`tagFilter_doesNotThrowInEitherMode` |
+| 放置器（2） | `placer_writesWaypointWithoutNeighbourUpdates`、`placer_setsWaterloggedInWater` |
 | 端到端 id（1） | `placedWaypointKeepsStructuredId` |
+
+> **重要：这 21 个测试全绿 _不_ 构成死锁已修复的证据。** GameTest 世界超平坦且无结构（处理器在第 4 道门就退出）、所有邻居满加载（构造不出「边界列 + 界外邻居未达 FULL」这个前提），而且主线程卡死时 `tickInternal` 停止推进 ⇒ **超时永不触发，`runGameTestServer` 会永久挂起而不是失败**。死锁的判别力验证只能用 §3.6「修复与验证证据」里的专用服务器 + RCON 对照步骤。
 
 ### 1.3 数据包 codec 门
 
@@ -63,7 +66,15 @@ gradlew.bat runServer --offline --console=plain
 | 无结构区块走廉价早退 | ✅ 大量 `starts=0` 行 |
 | 名单筛选在真实环境中生效 | ✅ `minecraft:mineshaft` 被白名单模式拒绝（`skipped by tag`） |
 | 是否存在异常逃逸 | ✅ 无 `structure waypoint: handler failed` |
-| 是否死锁 | ✅ 无 `Chunk not there when requested`、无 `A single server tick took …`、无 `CrashReport` |
+| 是否死锁 | **❌ 此前的判定无效（2026-09-15 审查更正）** —— 见下方说明 |
+
+> **为什么这一行不能判定「无死锁」（2026-09-15 审查结论）：**
+> 本行的依据是"三个标记都没出现"。但对本次真正发生的死锁，**这三个标记一个都不可能产生**：
+> - `Chunk not there when requested`（`ServerChunkCache.getChunk:163`）位于 `:159` 的 `managedBlock` **之后**，卡在 `managedBlock` 时永远走不到；
+> - watchdog 自己也需要主线程推进才能报警，主线程一旦卡在 `managedBlock`，它一起被冻住；
+> - 因此该死锁的表现就是「静止 + 无日志 + 无 crash-report」——**用"没看到这三样"来判定"没有死锁"，逻辑上是循环的**。
+>
+> 本节 §1.4 的窗口也**从未触及白名单结构**（本节 §4 第 1 项已自述）：临时日志里唯一的结构是 `minecraft:mineshaft`，而它在白名单模式下被拒绝，`StructureWaypointPlacer.place()` 根本不会执行。所以这次验证**在原理上无法覆盖**死锁路径。
 
 验证后已**移除**临时日志并删除 scratch 世界（保留的 debug 输出仅为 `noPlacement` / `placed` / `skippedByTag` / `budgetExhausted` / `limitReached` 这些每结构至多一次的记录）。
 
@@ -116,15 +127,29 @@ gradlew.bat runServer --offline --console=plain
 
 见实施计划 §0.3（C1–C10）。全部以区块补锚文档为准；上游文档**未修改**。
 
-### 3.6 【严重】放置用 `UPDATE_ALL` 导致主线程自死锁（已修复）
+### 3.6 【严重·已修复】放置经 `Level#setBlock` 派生的邻居通知导致主线程自死锁
+
+> **2026-09-15 状态更正：本节原写「（已修复）」，该结论不成立。** 承载那段文字的提交本身就是 `6c97b5e「尝试修复死锁，失败」`；修复上线后死锁**依然复现**。根因分析只覆盖了两条同级路径中的**一条**。
+>
+> **2026-09-15 二次更正：已按「方案 B」修复并完成复现对照验证，结论见本节末尾「修复与验证证据」。**
 
 **症状：** 游玩一段时间后服务器**突然完全冻结**，不崩溃，`latest.log` / `debug.log` 里没有任何有价值的信息，`crash-reports` 为空。
 
-**根因：** `StructureWaypointPlacer` 用 `level.setBlock(pos, state, Block.UPDATE_ALL)` 放置锚点。`UPDATE_ALL` 含 `UPDATE_NEIGHBORS`，会触发**邻居更新级联**，而级联会**同步读取相邻区块的方块**。相邻区块在 FULL 阶段不保证已加载，于是进入 `ServerChunkCache` 的 `managedBlock`，等待一个只有主线程自己才能完成的 future —— 而主线程正卡在处理器里。**自死锁。**
+**根因（2026-09-15 补全）：** `StructureWaypointPlacer` 通过 `Level#setBlock` 放置锚点，而 `Level#setBlock` 会派生**邻居通知**；邻居通知**同步读写相邻区块的方块**。相邻区块在 FULL 阶段不保证已加载，于是进入 `ServerChunkCache` 的 `managedBlock`，等待一个只有主线程自己才能完成的 future —— 而主线程正卡在处理器里。**自死锁。**
+
+**关键更正：这样的派生路径有两条，而不是一条。** 它们由**不同的标志位**把守：
+
+| 路径 | 门槛 | `UPDATE_ALL`(3) | `UPDATE_CLIENTS`(2) | 抑制方法 |
+|---|---|---|---|---|
+| **A** 红石：`blockUpdated` → `updateNeighborsAt` → `MultiNeighborUpdate.runNext` → `getBlockState(邻居)` | `flags & 1` | 跑 | 跳过 | 去掉 `UPDATE_NEIGHBORS` |
+| **B** 形状级联：`updateNeighbourShapes` → `neighborShapeChanged` → `CollectingNeighborUpdater.shapeUpdate` → `NeighborUpdater.executeShapeUpdate` → `getBlockState(邻居)` | **`(flags & 16) == 0`** | **跑** | **照跑** | 只有第 **16** 位（`UPDATE_KNOWN_SHAPE`）能抑制 |
+
+`Block.java:77-86`：`UPDATE_NEIGHBORS=1`、`UPDATE_CLIENTS=2`、`UPDATE_KNOWN_SHAPE=16`、`UPDATE_ALL=3`。**两个值都不含第 16 位**，且 `Level.java:294` 的 `flags & -34` 会把第 1 位与第 32 位一并清掉 —— 因此在路径 B 上 **`UPDATE_ALL` 与 `UPDATE_CLIENTS` 行为完全相同**。这就是「改成 `UPDATE_CLIENTS` 后依然死锁」的确切原因。
 
 **完整调用链（可复核）：**
 
 ```
+【路径 A】—— 6c97b5e 修掉的那条
 Level.setBlock:261          markAndNotifyBlock(...)
 Level.markAndNotifyBlock:286  if ((flags & 1) != 0)          // UPDATE_NEIGHBORS = 1
 Level.markAndNotifyBlock:287      this.blockUpdated(pos, block)
@@ -135,7 +160,24 @@ MultiNeighborUpdate.runNext:122-123   BlockState bs = level.getBlockState(邻居
 Level.getBlockState:410               → getChunk(..., ChunkStatus.FULL)   // requireChunk = true
 Level.getChunk:202                    → ServerChunkCache.getChunk(x, z, FULL, true)
 ServerChunkCache.getChunk:159         this.mainThreadProcessor.managedBlock(f::isDone);   // ★ 永久阻塞
+
+【路径 B】—— 6c97b5e 未触及，因此死锁依旧
+Level.markAndNotifyBlock:293  if ((flags & 16) == 0 && recursionLeft > 0)   // UPDATE_KNOWN_SHAPE = 16
+Level.markAndNotifyBlock:294      int i = flags & -34;                     // 清掉第 1 位与第 32 位
+Level.markAndNotifyBlock:296      state.updateNeighbourShapes(this, pos, i, recursionLeft - 1)
+BlockBehaviour:781-788            for (6 个方向) level.neighborShapeChanged(...)
+Level.neighborShapeChanged:378-380  → neighborUpdater.shapeUpdate(...)
+CollectingNeighborUpdater:29-33      → ShapeUpdate(pos = 邻居)
+CollectingNeighborUpdater:137-144 ShapeUpdate.runNext → NeighborUpdater.executeShapeUpdate
+NeighborUpdater:36                BlockState bs = level.getBlockState(邻居)   // ← 同级路径，同一阻塞点
+Level.getBlockState:405-413            → getChunk(..., ChunkStatus.FULL)     // requireChunk = true
+ServerChunkCache.getChunk:158-159      this.mainThreadProcessor.managedBlock(f::isDone);   // ★ 同一个永久阻塞
 ```
+
+**同级还有两条次要路径（同属 `Level` 级写入派生）：**
+
+- **形状级联会跨边界「写」**：`NeighborUpdater:37-38` → `Block.updateOrDestroy` → `level.setBlock(邻居坐标, ...)`。锚点是完整碰撞体（`ModBlocks.java:16-22` 设了 `noOcclusion()` 但**没有** `noCollission()`），因此旁边的栅栏/墙/铁栏杆/玻璃板会来连接它 —— 在村庄、林地府邸、海底神殿里都很现实，于是再次回到同一条阻塞路径。
+- **旧方块的 `onRemove` 会触发邻居更新**：`LevelChunk.setBlockState:274` → `BlockBehaviour#onRemove:193-197` → `Level.removeBlockEntity:822-827` 结尾调用 `updateNeighbourForOutputSignal` → `MultiNeighborUpdate.runNext:123 getBlockState(邻居)`。目前只靠扫描器的 `hasBlockEntity()` 判据挡住，`place()` 自身没有复查。
 
 **为什么相邻区块可能没到 FULL：** `ChunkPyramid.GENERATION_PYRAMID` 的 `FULL` 步骤（`:45`）**自身没有任何 requirement**，继承最近一次声明 —— `LIGHT` 的 `addRequirement(ChunkStatus.INITIALIZE_LIGHT, 1)`（`:43`）。因此区块在跑 FULL（也就是 `ChunkEvent.Load` 触发的时刻）时，其 8 个水平邻居**只保证到 `INITIALIZE_LIGHT`**。
 
@@ -151,15 +193,148 @@ ServerChunkCache.getChunk:159         this.mainThreadProcessor.managedBlock(f::i
 - `21:52:05`、`21:53:05` 两条 `spark: Timed out waiting for world statistics` ⇒ spark 也拿不到 tick 统计；
 - 会话期间 `crash-reports` 一份都没有。
 
-**修复（方案 A）：** 改用 `Block.UPDATE_CLIENTS`，即去掉 `UPDATE_NEIGHBORS`，邻居级联不再发生。该方块不依赖邻居通知（无红石、无形状逻辑，`SimpleWaterloggedBlock` 的流体状态来自方块状态），光照与客户端更新由 `LevelChunk.setBlockState` 独立排队，不受影响。
+**修复（2026-09-15 最终采用：方案 B）：**
 
-**修复位置：** `structure/StructureWaypointPlacer.java:83`。
+```java
+// 方案 B（已采用）：绕开 Level，直接写已持有的 LevelChunk。
+//   引擎自己的世界生成路径就是这么做的：WorldGenRegion.java:275-284 用 chunk.setBlockState(pos, state, false)。
+BlockState previous = chunk.setBlockState(pos, state, false);
+if (previous == null) {
+    return false;                       // 状态未变，按失败处理
+}
+level.onBlockStateChange(pos, previous, state);   // 镜像 Level#setBlock 唯一有价值的副作用
+```
 
-**这个坑为什么之前没被发现：** 实施计划 §0.5 的 E3 断言「事件期间对本区块调 `level.setBlock` 会短路返回，不阻塞」——**该断言本身正确，但只覆盖了 `setBlock` 的第一次区块查找**（`getChunkAt(pos)`，pos 在事件区块内）。它没有覆盖 `setBlock` **派生出的邻居更新级联**，而级联读的是**其他**区块。E3 已就地更正并新增 E3a，禁止清单新增 F6，风险登记新增 R17，评审清单新增第 15/16 条长期钉住。
+```java
+// 方案 A'（未采用，仅作记录）：显式抑制路径 B
+//   18 = UPDATE_CLIENTS(2) | UPDATE_KNOWN_SHAPE(16)
+level.setBlock(pos, state, Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+```
 
-### 3.7 遗留观察（未修改，供后续评估）
+**为什么采用方案 B：** 它一次性把上述**三条**路径（读级联、跨边界写、`onRemove` 邻居更新）全部从结构上消除，而不是靠标志位逐个堵；同时顺带消掉 `waypoint.setId()` → `setChanged()` → `Level.blockEntityChanged:984-988` → `getChunkAt` 这条同样派生自 `Level` 的传递性入口。方案 A' 只能堵路径 B，堵不住另外两条，而且把「安全」重新变成需要人来推理的标志位问题。
 
-L2 兜底扫描的起点是「结构最高 piece 顶部 + 8」，配合 64 格上限，意味着当某列在 `[结构顶 + 8 - 64, 结构顶 + 8]` 区间内没有可用地板时 L2 就会放弃该列。对于「piece 包围盒明显低于其落点」的结构（例如雪屋这类结构顶在地表之上、piece 盒顶却低于地表），L2 可能够不到地表。本轮未观察到实际影响（游戏中 4 次放置全部成功），但值得后续用实测确认。
+**伴随改动：**
+- `place()` 的形参由 `Level`/`ServerLevel` 收窄用途：只保留 `ServerLevel` 供 `onBlockStateChange` 这一次调用，并在 javadoc 里写明它**不用于方块访问**——`Level` 的写读 API（`setBlock`/`getBlockState`/`getChunkAt`/`getChunk`/`getFluidState`/`getBlockEntity`）与整个 `StructureManager` 接口在这个包里已经写不出来。
+- 写入前复查前置条件（目标格无 BE 且为空气/可替换/水），使 `place()` 不再依赖调用方。
+- 修正了原先「`pendingBlockEntities` 里不可能有该位置」的错误注释：该 map 由 `ProtoChunk` 灌入，直到 `postProcessGeneration()` 才清空，事件时刻**可能仍有条目**；真实理由是 `setBlockState` 刚把新 BE 注册进 `blockEntities`，查询先命中该 map，走不到 pending 提升路径。
+
+**必须接受的语义代价：** `chunk.setBlockState` 不做邻居通知，因此锚点旁边原有的栅栏/墙/玻璃板/铁栏杆**不会来连接它**。对当前锚点方块完全无害（完整方块、无红石逻辑、无形状依赖，`SimpleWaterloggedBlock` 的流体状态来自方块自身状态）。**若将来给锚点加 direction(facing) 或连接性属性，必须重新评估这一条。**
+
+**修复位置：** `structure/StructureWaypointPlacer.java`（唯一的 `setBlock` 调用点已不存在）。
+
+---
+
+#### 修复与验证证据（2026-09-15）
+
+**验证方式：** 专用服务器 + RCON 驱动，`debugMode = true`，新世界。这是唯一有判别力的验证 —— GameTest 抓不到这个 bug（超平坦无结构、邻居全满加载、且主线程卡死时 `tickInternal` 停止推进导致超时永不触发，`runGameTestServer` 会永久挂起而不是失败）。
+
+**复现步骤与实测输出（修复后）：**
+
+```
+RCON> locate structure minecraft:ancient_city
+      The nearest minecraft:ancient_city is at [-3024, ~, 2480]
+RCON> forceload add -3040 2464 -2992 2512
+      Marked 16 chunks in Overworld from [-190, 154] to [-187, 157] to be force loaded
+
+[Server thread/DEBUG] structure waypoint: placed structure=minecraft:ancient_city pos=BlockPos{x=-3022, y=-35, z=2480} waterlogged=false
+[Server thread/INFO]  [LocateCommand]: Locating element minecraft:ancient_city took 357 ms
+[Server thread/INFO]  [MinecraftServer]: [Rcon: Marked 16 chunks ... to be force loaded]
+[Server thread/WARN]  [MinecraftServer]: Can't keep up! Is the server overloaded? Running 5755ms or 115 ticks behind
+```
+
+关键点：**`placed` 那行之后服务端线程仍在处理命令**（`Marked 16 chunks` 是 RCON 回应，`Can't keep up` 是 tick 落后告警而不是冻结）。修复前同样的场景里，服务端线程会在 `placed` 附近静默停止且再无输出。
+
+**继续加压，确认不复现：**
+
+| 结构 | 结果 |
+|---|---|
+| `minecraft:ancient_city` | `placed pos=(-3022, -35, 2480) waterlogged=false` |
+| `minecraft:mansion`（林地府邸，三个历史事故之一） | `placed pos=(-6060, 76, -9861) waterlogged=false` |
+| `minecraft:monument`（海底神殿） | `placed pos=(-384, 52, -496) waterlogged=true`（水中，含水标记正确） |
+| `minecraft:trial_chambers` | `probe budget exhausted ... calls=2000` → `no valid placement`（符合预算设计，非冻结） |
+| `minecraft:mineshaft` | `skipped by tag ... mode=WHITELIST`（名单生效） |
+
+**存活证明（主线程仍在推进 tick）：**
+
+```
+RCON> time query gametime   →  The time is 3257
+（15 秒后）
+RCON> time query gametime   →  The time is 3560      // 推进 303 tick ≈ 15 s，tick 循环正常
+```
+
+**线程栈证明（无 `managedBlock` 自阻塞）：** `jstack` 抓到 Server thread 处于
+`MinecraftServer.waitUntilNextTick → waitForTasks → LockSupport.parkNanos`
+—— 这是**正常的两 tick 之间空转**，不是 `ServerChunkCache.getChunk → managedBlock` 那种自等待。
+
+**落盘证明（锚点真的写进存档了）：** `save-all flush` 后用区域文件扫描工具读回：
+
+```
+chunk(-189,155) idx=867 inflated 115776 bytes
+mentions teleportwaypoint=true waypoint=true ancient_city=true block_entities=true
+```
+
+> 对照：用户冻结存档里的远古城市区块（75,−144）扫描结果是 `teleportwaypoint=false waypoint=false`
+> —— 注入尝试了但没写成，正是死锁的痕迹。修复后同一类区块（−189,155）里锚点**正常存在**。
+
+**结论：** 路径 B（以及另外两条同级路径）已从结构上消除；上面三类结构全部成功注入且服务器全程可响应、tick 持续推进、锚点正确落盘。
+
+**这个坑为什么之前没被发现（技术层面）：** 实施计划 §0.5 的 E3 断言「事件期间对本区块调 `level.setBlock` 会短路返回，不阻塞」——**该断言本身正确，但只覆盖了 `setBlock` 的第一次区块查找**（`getChunkAt(pos)`，pos 在事件区块内）。它没有覆盖 `setBlock` **派生出的邻居通知**，而邻居通知读/写的是**其他**区块。E3a 补充时又只补了路径 A（`UPDATE_NEIGHBORS`），**路径 B 自始至终没被分析到**。
+
+**为什么没被发现（流程层面，同样重要）：**
+
+1. **错误的修复被文档背书。** `6c97b5e` 不只改了代码，还把实施计划的**允许清单 A2** 从 `UPDATE_ALL` 改成 `UPDATE_CLIENTS`、新增 F6/R17、并加了评审第 15/16 条 —— 等于用"改规范"去迁就一个错误的修复。第 16 条尤其讽刺：它点了 `UPDATE_KNOWN_SHAPE` 的名字，却只要求该 token **不出现**，于是检查通过而 bug 存活。
+2. **新增的两个回归测试对该 bug 零效力。** `placer_writesWaypointWithoutNeighbourUpdates` 与 `placer_setsWaterloggedInWater` 在 `ChunkEvent.Load` **之外**直接调 `place()`，且只断言"放置成功"，从不检查标志位、邻居或邻接性 —— 把实现改回 `UPDATE_ALL` 它们照样全绿。名字里写着 `WithoutNeighbourUpdates`，却不检验邻居更新，反而在 javadoc 里断言了一个**对 `UPDATE_CLIENTS` 不成立的前提**。
+3. **GameTest 在原理上无法发现此类死锁。** 超时基于 `tickCount`（`GameTestInfo.tickInternal`），而主线程卡死时 tick 循环停止 ⇒ `tickCount` 永不增长 ⇒ **超时永不触发**，`runGameTestServer` 是**永久挂起**而非失败，且 `build.gradle` 没有给 run 任务设超时。GameTest 世界还是**超平坦且无结构**的，`getAllStarts()` 恒为空，处理器在第 4 道门就退出；而测试自身的写入用的是 `helper.setBlock`（`UPDATE_ALL`）、邻居全部满加载 —— 生产前置条件（边界列 + 界外邻居未达 FULL）在该环境里**构造不出来**。
+4. **「日志里没有 `placed` ⇒ 放置没执行」是无效推理。** `placed`/`noPlacement`/`skippedByTag` 全部经 `StructureWaypointDebug.debug()` 受 `debugMode` 门控（`StructureWaypointDebug.java:23-27`），而 `common.toml` 当前是 `debugMode = false`；该配置在多轮运行之间被切换过，所以"没有日志行"对多数运行**不构成证据**。真正可靠的只有**不受开关管**的两个 WARN：`reentered` 与 `failed` —— 它们 0 命中，才说明模组从未抛异常、从未重入。
+
+**已验证发生的死锁现场（`run/logs`，三例）：**
+
+| 日志 | 世界 | 指纹 |
+|---|---|---|
+| `2026-09-14-7.log.gz` | 大肥鱼的结构测试 | `21:43:58` 激活「林地府邸」锚点 → 服务端线程最后一行 21:45:04 → `21:46:05 spark: Timed out waiting for world statistics` → 之后无声 |
+| `2026-09-14-6.log.gz` | 传送锚点测试1 | 21:49:51 / 21:50:31 激活锚点 → `21:51:25` 切旁观者（飞向新地形）→ `21:52:05`、`21:53:05` spark 超时 → 无 `Stopping server`、无 crash-report |
+| `2026-09-15-3.log.gz` | 传送锚点测试2 | `00:38:48 LocateCommand: Locating element minecraft:ancient_city`（白名单结构）→ `00:39:05`、`00:40:05` spark 超时；渲染线程仍在工作、客户端退出时**服务端没有 Saving chunks / Stopping server** |
+
+三例共同特征：**渲染线程存活、服务端线程哑掉、spark 报「等待世界统计超时」、无 crash-report** —— 与主线程卡在 `managedBlock` 的机制完全吻合。
+
+**顺带排除的三个假设（省得后人重查）：**
+
+- **光照引擎不会死锁**：`LevelChunk.setBlockState:260,268` → `ThreadedLevelLightEngine.addTask` 只是往邮箱投递；引擎内唯一的区块查询 `LightEngine.getChunk` → `ServerChunkCache.getChunkForLighting:267-271` 是纯 map 查找，不阻塞。
+- **扫描器在结构上不可能跨区块**：`LevelChunk.getBlockState:178-211` 用 `x & 15` / `z & 15` 取址，越界只会**别名到本区块另一列**；`y` 越界直接返回 AIR。它手里根本没有 `Level`（`ChunkAccess` 只持有 `levelHeightAccessor`）。
+- **`isFaceSturdy(chunk, ...)` 对原版方块取缓存路径**，不触碰传入的 BlockGetter（只有脚手架/竹子/潜影盒等 `dynamicShape()` 方块才走实时形状），且传入的 BlockGetter 就是我们给的 `LevelChunk`。
+
+### 3.7 【严重·已修复】`Naming.key()` 无条件拼 `tpwp.` 导致旧存档锚点名全部损坏
+
+**症状：** 0.4.0 里所有**旧存档**的锚点显示名都变成 "Unnamed Waypoint"（或裸键），即设计文档 §7.3 与验收表承诺的「旧锚点名字不变」实际是**假的**。
+
+**根因：** `Naming.key()` 无条件返回 `"tpwp." + id`。旧存档的 `waypoint_id` 是**裸值**（`end_city`、`jungle_temple`、`nether_fortress`、`ocean_monument`、`woodland_mansion` …），于是解析成 `tpwp.end_city` 这类**语言文件里根本不存在**的键：
+
+| 旧 `waypoint_id` | `key()` 曾得到 | 语言文件里有吗 |
+|---|---|---|
+| `end_city` | `tpwp.end_city` | ❌ |
+| `ancient_city` | `tpwp.ancient_city` | ❌ |
+| `jungle_temple` | `tpwp.jungle_temple` | ❌ |
+| …（13 个旧 id 全部如此） | | ❌ |
+
+后果连锁：语言文件里保留的 14 个 `teleportwaypoint.waypoint.*` 旧键**没有任何代码路径能到达**，成了死字符串；而 `humanize()` 回退**从未被生产代码调用**（只有 GameTest 用）。
+
+**修复（三级回退）：**
+
+1. `tpwp.<id>` —— 当前语言有该键则用；
+2. 否则 `teleportwaypoint.waypoint.<id>` —— 激活保留的旧键，旧存档名字恢复；
+3. 都没有 —— `Component.translatableWithFallback(key, humanize(id))`，渲染为人工化名（如 `End City`）而不是裸键。
+
+**实现要点：**
+- 新增 `Naming.modernKey(id)` / `Naming.legacyKey(id)`（**不查语言表**，处处稳定）与 `Naming.hasTranslation(key)`。
+- `displayName()` 改为 `Component.translatableWithFallback(key(id), humanize(id))`，让 `humanize()` 真正进入生产路径。
+- 语义细节：**`key()` 的选择在渲染时按客户端的语言表决定**；服务端构造的组件只是携带「键 + 人工化回退文本」过线，客户端解析。因此服务端调用 `displayName()` 也不会写死错误的键 —— `TranslatableContents` 在客户端按 key 查表，查不到才用 fallback。
+- Xaero 路径（`XaeroMinimapIntegration`）之前也**没有**实现设计文档 §5.6 要求的「键是否存在」检查，会把裸键当名字显示。新增 `resolveMapName(id)` 做同样三级回退，返回字符串。
+
+**验证：** 新增 GameTest `naming_legacyIdsStillNameThemselves` —— 13 个旧裸 id 逐个断言 `modernKey`/`legacyKey` 形态，并断言 `displayName()` 的回退文本**不得**退化为 `EMPTY_FALLBACK_NAME` 且必须等于 `humanize(id)`。修复前该断言会在 13 个 id 上全部失败。
+
+### 3.8 遗留观察（未修改，供后续评估）
+
+L2 兜底扫描的起点是「结构最高 piece 顶部 + 8」，配合 64 格上限，意味着当某列在 `[结构顶 + 8 - 64, 结构顶 + 8]` 区间内没有可用地板时 L2 就会放弃该列。对于「piece 包围盒明显低于其落点」的结构（例如雪屋这类结构顶在地表之上、piece 盒顶却低于地表），L2 可能够不到地表。本轮未观察到实际影响（游戏中多次放置全部成功），但值得后续用实测确认。
 
 
 ---

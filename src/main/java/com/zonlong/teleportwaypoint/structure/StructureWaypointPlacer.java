@@ -7,7 +7,6 @@ import com.zonlong.teleportwaypoint.block.entity.WaypointBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.material.FluidState;
@@ -16,15 +15,34 @@ import net.minecraft.world.level.material.Fluids;
 /**
  * Writes an injected waypoint into the world.
  *
- * <p>Reached only from {@code ChunkEvent.Load}, on the server main thread. The block write goes
- * through {@link ServerLevel#setBlock}, which resolves the chunk via {@code getChunkAt}. That first
- * lookup is safe here because the event fires while the chunk holder's {@code currentlyLoading} field
- * still points at the very chunk being loaded, so {@code ServerChunkCache#getChunk} short-circuits
- * before it can block on the main thread's own mailbox.
+ * <p>Reached only from {@code ChunkEvent.Load}, on the server main thread.
  *
- * <p>The update flags are the dangerous part, not the write itself. See the comment on the
- * {@code setBlock} call: neighbour updates would read blocks in adjacent chunks that are not
- * guaranteed to be loaded, which deadlocks the main thread against itself.
+ * <h2>Why this writes through {@link LevelChunk}, not through {@code Level#setBlock}</h2>
+ * {@code Level#setBlock} does not just write a block: it derives neighbour work, and that neighbour
+ * work synchronously reads (and sometimes writes) blocks in <em>adjacent</em> chunks. There are two
+ * such derived paths and they are gated by <em>different</em> flag bits, which is why picking update
+ * flags cannot close this off:
+ * <ul>
+ *   <li>the redstone path, gated on {@code flags & 1} ({@code UPDATE_NEIGHBORS});</li>
+ *   <li>the shape cascade, gated on {@code (flags & 16) == 0} ({@code UPDATE_KNOWN_SHAPE}).</li>
+ * </ul>
+ * Both {@code UPDATE_ALL} and {@code UPDATE_CLIENTS} lack bit 16, and {@code Level#markAndNotifyBlock}
+ * masks the flags with {@code & -34}, so the shape cascade runs for either value. A block on a chunk
+ * edge reaches into the neighbour chunk, and a chunk that is still generating only guarantees its
+ * horizontal neighbours are at {@code INITIALIZE_LIGHT} (the {@code FULL} step of
+ * {@code ChunkPyramid.GENERATION_PYRAMID} adds no requirement of its own and inherits the
+ * {@code LIGHT} step's {@code addRequirement(INITIALIZE_LIGHT, 1)}). For a neighbour that is not yet
+ * FULL the read lands in {@code ServerChunkCache#getChunk}'s {@code mainThreadProcessor.managedBlock},
+ * which waits for work that only the main thread can do -- and the main thread is this call. The
+ * server then freezes silently: no exception (the check that would throw sits after the blocking
+ * wait), no log line, and even the watchdog is frozen with it.
+ *
+ * <p>{@code LevelChunk#setBlockState} is the engine's own world-generation write path (see
+ * {@code WorldGenRegion#setBlock}) and performs the section write, the four heightmaps, light
+ * queueing and block entity creation and registration itself, while deriving <em>no</em> neighbour
+ * work at all. Its only {@code Level} interaction is {@code onBlockStateChange} for the same position.
+ * Taking the {@code Level} write API out of scope is what makes this structural rather than a matter
+ * of choosing flags carefully.
  *
  * <p>Registering the block entity is deliberately left to the existing {@code onLoad()} path: the new
  * block entity is queued into {@code Level#addFreshBlockEntities} and picked up on the next tick by
@@ -41,6 +59,13 @@ public final class StructureWaypointPlacer {
     /**
      * Places the waypoint block and assigns its {@code waypoint_id}.
      *
+     * <p>The {@link ServerLevel} argument exists only to forward the single
+     * {@code onBlockStateChange} notification that {@code Level#setBlock} would have issued. It is
+     * deliberately narrowed to {@code ServerLevel} and is never used for block access: the whole point
+     * of this class is that the {@code Level} write and read APIs ({@code setBlock},
+     * {@code getBlockState}, {@code getChunkAt}, {@code getChunk}, {@code getFluidState},
+     * {@code getBlockEntity}) stay out of scope here.
+     *
      * @param structureId used for debug output only; may be null
      * @return true when the block was placed and its id assigned
      */
@@ -53,39 +78,43 @@ public final class StructureWaypointPlacer {
             return false;
         }
 
+        // Re-assert the scanner's preconditions immediately before the write. Cheap, and it keeps this
+        // method safe on its own rather than relying on the caller.
+        BlockState existing = chunk.getBlockState(pos);
+        if (existing.hasBlockEntity()
+                || !(existing.isAir() || existing.canBeReplaced()
+                        || existing.getFluidState().is(Fluids.WATER))) {
+            StructureWaypointDebug.debug(
+                    "structure waypoint: refusing placement, target not replaceable pos={} state={}", pos, existing);
+            return false;
+        }
+
         BlockState state = ModBlocks.WAYPOINT.get().defaultBlockState();
 
         // The block state defaults to waterlogged=false, which would leave an air pocket underwater.
         // Read the fluid from the chunk, never from the level. Only water is accepted: lava was already
         // excluded during scanning, and a waypoint placed in lava would just burn away.
-        FluidState fluid = chunk.getBlockState(pos).getFluidState();
+        FluidState fluid = existing.getFluidState();
         if (fluid.getType() == Fluids.WATER) {
             state = state.setValue(WaypointBlock.WATERLOGGED, true);
         }
 
-        // UPDATE_CLIENTS only -- deliberately NOT Block.UPDATE_ALL.
-        //
-        // UPDATE_ALL includes UPDATE_NEIGHBORS, which makes the engine walk the six neighbours of this
-        // position and read each of their block states through Level#getBlockState. Blocks at a chunk
-        // edge reach into the adjacent chunk, and a chunk that is still generating only guarantees its
-        // horizontal neighbours are at INITIALIZE_LIGHT (ChunkPyramid.GENERATION_PYRAMID: LIGHT
-        // requires INITIALIZE_LIGHT at radius 1; the FULL step adds no requirement of its own). For a
-        // neighbour that is not yet FULL, Level#getBlockState ends up in
-        // ServerChunkCache#getChunk -> mainThreadProcessor.managedBlock, which waits on work that only
-        // the main thread can do -- and the main thread is this call. That is a self-deadlock: the
-        // server freezes with no exception and no log line.
-        //
-        // Dropping the neighbour updates is safe for this block: the waypoint has no redstone or shape
-        // dependent behaviour, and SimpleWaterloggedBlock derives its fluid state from the block state
-        // rather than from a neighbour notification. Light and client updates are unaffected, because
-        // LevelChunk#setBlockState queues its own light check and heightmap updates independently of the
-        // update flags.
-        if (!level.setBlock(pos, state, Block.UPDATE_CLIENTS)) {
+        // Write straight into the chunk we already hold. Note the `false` argument is `isMoving`, not a
+        // flag set: LevelChunk#setBlockState takes no update flags, which is exactly why it derives no
+        // neighbour work. WorldGenRegion#setBlock calls it the same way.
+        BlockState previous = chunk.setBlockState(pos, state, false);
+        if (previous == null) {
+            // Null means the section was left unchanged, so nothing was placed.
             return false;
         }
+        // Mirror the one worthwhile side effect of Level#setBlock. Safe: ServerLevel#onBlockStateChange
+        // only compares POI types and defers any work through getServer().execute(...).
+        level.onBlockStateChange(pos, previous, state);
 
-        // Safe to look up: the position was checked to hold no block entity before placement, so it
-        // cannot be sitting in pendingBlockEntities and no lazy NBT deserialization can happen.
+        // Safe to look up: setBlockState just created and registered the block entity into
+        // chunk.blockEntities, so this lookup hits that map before it can reach the pending-NBT
+        // promotion path. (The pending map is populated from the ProtoChunk and is not cleared until
+        // postProcessGeneration, so it is NOT empty at this point -- the hit order is the real reason.)
         if (!(chunk.getBlockEntity(pos) instanceof WaypointBlockEntity waypoint)) {
             StructureWaypointDebug.debug("structure waypoint: no block entity after placement pos={}", pos);
             return false;

@@ -314,9 +314,11 @@ public final class XaeroMinimapIntegration {
                     color = info.pocket() ? WaypointColor.YELLOW : WaypointColor.RED;
                 }
                 String symbol = info.pocket() ? "P" : "W";
-                // Pocket waypoints use their literal name; regular waypoints use the raw
-                // translation key so Xaero can localize them in the current client language.
-                String displayName = info.pocket() ? info.name() : Naming.key(info.name());
+                // Pocket waypoints use their literal name. Regular waypoints hand Xaero a translation key
+                // so it localizes in the current client language -- but only if the current language
+                // actually has that key, otherwise Xaero would render the raw key. Same three-level
+                // fallback as the rest of the mod: structured key, legacy key, humanized name.
+                String displayName = info.pocket() ? info.name() : resolveMapName(info.name());
 
                 Waypoint existing = map.get(id);
                 if (existing != null
@@ -342,6 +344,23 @@ public final class XaeroMinimapIntegration {
                 waypointById.put(id, waypoint);
             }
         }
+    }
+
+    /**
+     * Resolves the string handed to Xaero for a regular waypoint. Xaero localizes a value that looks
+     * like a translation key, so return one only when the current language really has it; otherwise
+     * fall back to the legacy key and finally to a humanized name, never a raw key.
+     */
+    private static String resolveMapName(String id) {
+        String modern = Naming.modernKey(id);
+        if (Naming.hasTranslation(modern)) {
+            return modern;
+        }
+        String legacy = Naming.legacyKey(id);
+        if (Naming.hasTranslation(legacy)) {
+            return legacy;
+        }
+        return Naming.humanize(id);
     }
 
     private static void removeOwnedWaypoint(Int2ObjectMap<Waypoint> map, ResourceLocation key, int id) {
