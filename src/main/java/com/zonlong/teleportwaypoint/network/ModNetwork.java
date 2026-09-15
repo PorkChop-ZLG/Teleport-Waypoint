@@ -14,17 +14,52 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 public class ModNetwork {
 
     public static void register(final RegisterPayloadHandlersEvent event) {
-        final PayloadRegistrar registrar = event.registrar("1");
+        final PayloadRegistrar registrar = event.registrar("4");
 
         registrar.playToClient(
                 SyncActivatedWaypointsPayload.TYPE,
                 SyncActivatedWaypointsPayload.STREAM_CODEC,
                 ModNetwork::handleSyncActivated);
 
+        registrar.playToClient(
+                SyncDimensionWaypointsPayload.TYPE,
+                SyncDimensionWaypointsPayload.STREAM_CODEC,
+                ModNetwork::handleSyncDimensionWaypoints);
+
+        registrar.playToClient(
+                AddWaypointPayload.TYPE,
+                AddWaypointPayload.STREAM_CODEC,
+                ModNetwork::handleAddWaypoint);
+
+        registrar.playToClient(
+                UpdateWaypointPayload.TYPE,
+                UpdateWaypointPayload.STREAM_CODEC,
+                ModNetwork::handleUpdateWaypoint);
+
+        registrar.playToClient(
+                RemoveWaypointPayload.TYPE,
+                RemoveWaypointPayload.STREAM_CODEC,
+                ModNetwork::handleRemoveWaypoint);
+
+        registrar.playToClient(
+                ActivatedWaypointAddPayload.TYPE,
+                ActivatedWaypointAddPayload.STREAM_CODEC,
+                ModNetwork::handleActivatedWaypointAdd);
+
+        registrar.playToClient(
+                ActivatedWaypointRemovePayload.TYPE,
+                ActivatedWaypointRemovePayload.STREAM_CODEC,
+                ModNetwork::handleActivatedWaypointRemove);
+
         registrar.playToServer(
                 TeleportRequestPayload.TYPE,
                 TeleportRequestPayload.STREAM_CODEC,
                 ModNetwork::handleTeleportRequest);
+
+        registrar.playToServer(
+                MapTeleportRequestPayload.TYPE,
+                MapTeleportRequestPayload.STREAM_CODEC,
+                ModNetwork::handleMapTeleportRequest);
 
         registrar.playToServer(
                 RenameWaypointPayload.TYPE,
@@ -43,13 +78,45 @@ public class ModNetwork {
     }
 
     private static void handleSyncActivated(final SyncActivatedWaypointsPayload payload, final IPayloadContext context) {
-        context.enqueueWork(() -> ClientWaypointState.setActivated(payload.waypoints()));
+        context.enqueueWork(() -> ClientWaypointState.applyActivatedSnapshot(payload.waypoints(), payload.page(), payload.done()));
+    }
+
+    private static void handleSyncDimensionWaypoints(final SyncDimensionWaypointsPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> ClientWaypointState.applyDimensionSnapshot(payload.dimension(), payload.waypoints(), payload.page(), payload.done()));
+    }
+
+    private static void handleAddWaypoint(final AddWaypointPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> ClientWaypointState.applyAdd(payload.waypoint()));
+    }
+
+    private static void handleUpdateWaypoint(final UpdateWaypointPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> ClientWaypointState.applyUpdate(payload.waypoint()));
+    }
+
+    private static void handleRemoveWaypoint(final RemoveWaypointPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> ClientWaypointState.applyRemove(payload.uid()));
+    }
+
+    private static void handleActivatedWaypointAdd(final ActivatedWaypointAddPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> ClientWaypointState.applyActivatedAdd(payload.info()));
+    }
+
+    private static void handleActivatedWaypointRemove(final ActivatedWaypointRemovePayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> ClientWaypointState.applyActivatedRemove(payload.uid()));
     }
 
     private static void handleTeleportRequest(final TeleportRequestPayload payload, final IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer serverPlayer) {
                 WaypointTeleporter.teleport(serverPlayer, payload.source(), payload.target());
+            }
+        });
+    }
+
+    private static void handleMapTeleportRequest(final MapTeleportRequestPayload payload, final IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer serverPlayer) {
+                WaypointTeleporter.teleportTo(serverPlayer, payload.target());
             }
         });
     }
@@ -80,7 +147,7 @@ public class ModNetwork {
                 waypointEntity.setId(newId);
             }
             serverPlayer.level().sendBlockUpdated(payload.pos(), waypointEntity.getBlockState(), waypointEntity.getBlockState(), 3);
-            // Update the global registry and the client list with the new name.
+            // Update the global registry; register() broadcasts an UpdateWaypointPayload when the record changed.
             WaypointManager.register(waypointEntity);
             WaypointManager.syncTo(serverPlayer);
             // After renaming, open the waypoint list.

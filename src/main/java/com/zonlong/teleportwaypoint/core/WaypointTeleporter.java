@@ -26,11 +26,30 @@ public class WaypointTeleporter {
     }
 
     public static void teleport(ServerPlayer player, UUID source, UUID target) {
+        // Rate limiting is enforced once inside teleportTo(), which is the shared
+        // entry point for both GUI and map teleports.
+        if (!WaypointManager.isValidTeleportRequest(player, source, target)) {
+            player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.teleport_denied"));
+            return;
+        }
+        teleportTo(player, target);
+    }
+
+    /**
+     * Teleports a player directly to an activated waypoint. Used by the Xaero map
+     * overlay where the player does not need to stand next to a source waypoint.
+     * All validation is server-side.
+     */
+    public static void teleportTo(ServerPlayer player, UUID target) {
         MinecraftServer server = player.getServer();
         if (server == null) {
             return;
         }
-        if (!WaypointManager.isValidTeleportRequest(player, source, target)) {
+        if (!TeleportRateLimiter.tryAcquire(player.getUUID())) {
+            player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.teleport_cooldown"));
+            return;
+        }
+        if (!WaypointManager.isActivated(player, target)) {
             player.sendSystemMessage(Component.translatable("chat.teleportwaypoint.teleport_denied"));
             return;
         }
@@ -70,7 +89,7 @@ public class WaypointTeleporter {
                 player.getXRot());
 
         // Teleport sound and portal particles (like Waystones).
-        targetLevel.playSound(null, record.pos(), SoundEvents.PORTAL_TRAVEL, SoundSource.PLAYERS, 0.5f, 1f);
+        targetLevel.playSound(null, record.pos(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 0.5f, 1f);
         targetLevel.sendParticles(player, ParticleTypes.PORTAL, true,
                 record.pos().getX() + 0.5, record.pos().getY() + 1.0, record.pos().getZ() + 0.5,
                 128, 1.5, 1.5, 1.5, 0.1);

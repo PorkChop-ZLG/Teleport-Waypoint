@@ -179,14 +179,17 @@ public class WaypointBlockEntity extends BlockEntity {
         if (uid != null) {
             tag.put(TAG_UID, NbtUtils.createUUID(uid));
         }
-        if (!id.isEmpty()) {
-            tag.putString(TAG_ID, id);
-        }
-        if (!name.isEmpty()) {
-            tag.putString(TAG_NAME, name);
-        }
-        if (owner != null) {
-            tag.put(TAG_OWNER, NbtUtils.createUUID(owner));
+        if (isPocketWaypoint()) {
+            if (!name.isEmpty()) {
+                tag.putString(TAG_NAME, name);
+            }
+            if (owner != null) {
+                tag.put(TAG_OWNER, NbtUtils.createUUID(owner));
+            }
+        } else {
+            if (!id.isEmpty()) {
+                tag.putString(TAG_ID, id);
+            }
         }
     }
 
@@ -196,14 +199,17 @@ public class WaypointBlockEntity extends BlockEntity {
         if (tag.contains(TAG_UID, Tag.TAG_INT_ARRAY)) {
             uid = NbtUtils.loadUUID(tag.get(TAG_UID));
         }
-        if (tag.contains(TAG_ID)) {
-            String storedId = tag.getString(TAG_ID);
-            id = isValidId(storedId) ? storedId : "empty";
-        }
-        String storedName = tag.getString(TAG_NAME);
-        name = isValidName(storedName) && !storedName.isEmpty() ? storedName : "Pocket Waypoint";
-        if (tag.contains(TAG_OWNER, Tag.TAG_INT_ARRAY)) {
-            owner = NbtUtils.loadUUID(tag.get(TAG_OWNER));
+        if (isPocketWaypoint()) {
+            String storedName = tag.getString(TAG_NAME);
+            name = isValidName(storedName) && !storedName.isEmpty() ? storedName : "Pocket Waypoint";
+            if (tag.contains(TAG_OWNER, Tag.TAG_INT_ARRAY)) {
+                owner = NbtUtils.loadUUID(tag.get(TAG_OWNER));
+            }
+        } else {
+            if (tag.contains(TAG_ID)) {
+                String storedId = tag.getString(TAG_ID);
+                id = isValidId(storedId) ? storedId : "empty";
+            }
         }
     }
 
